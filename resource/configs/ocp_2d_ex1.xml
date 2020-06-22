@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<etol nsteps="32" dt="0.50">
+	<states nstates="2" rhorizon="0">
+		<state name="x0" vartype="C" lower="0.00" upper="7.00" initial="1.00" terminal="5.00" tolerance="0.01"/>
+		<state name="x1" vartype="C" lower="0.00" upper="7.00" initial="2.00" terminal="4.00" tolerance="0.01"/>
+	</states>
+	<controls ncontrols="2" rhorizon="0">
+		<control name="u0" vartype="C" lower="-0.50" upper="0.50"/>
+		<control name="u1" vartype="C" lower="-0.50" upper="0.50"/>
+	</controls>
+	<exzones nzones="2">
+		<border name="exz0" ncorners="5">
+			<corner x="3.20" y="2.50" z="0.00"/>
+			<corner x="3.40" y="2.60" z="0.00"/>
+			<corner x="3.50" y="3.40" z="0.00"/>
+			<corner x="3.30" y="3.00" z="0.00"/>
+			<corner x="3.10" y="3.50" z="0.00"/>
+		</border>
+		<border name="exz1" ncorners= "4">
+			<corner x="2.20" y="2.50" z="0.00"/>
+			<corner x="2.40" y="2.60" z="0.00"/>
+			<corner x="2.50" y="3.40" z="0.00"/>
+			<corner x="2.10" y="3.50" z="0.00"/>
+		</border>
+	</exzones>
+	<mexzones nzones="2">
+		<track name="mexz0" radius="0.50" nwaypoints="2">
+			<waypoint name="pt0" t="0.00" ndatums="2">
+				<datum>1.51</datum>
+				<datum>2.00</datum>
+			</waypoint>
+			<waypoint name="pt1" t="32.00" ndatums="2">
+				<datum>2.00</datum>
+				<datum>2.00</datum>
+			</waypoint>
+		</track>
+		<track name="mexz1" radius="0.50" nwaypoints="2">
+			<waypoint name="pt0" t="0.00" ndatums="2">
+				<datum>1.00</datum>
+				<datum>4.00</datum>
+			</waypoint>
+			<waypoint name="pt1" t="32.00" ndatums="2">
+				<datum>1.00</datum>
+				<datum>3.00</datum>
+			</waypoint>
+		</track>
+	</mexzones>
+</etol>

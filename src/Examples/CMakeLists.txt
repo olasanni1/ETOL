@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 2.8.9)
+
+SET (EX_SUBDIRS Gurobi PSOPT GLPK OMPL)
+
+FOREACH(subdir ${EX_SUBDIRS})
+  ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/${subdir})
+ENDFOREACH()
