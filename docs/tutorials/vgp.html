@@ -1,0 +1,344 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Creating a VGP &mdash; ETOL  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Creating an eSolver" href="eSolver.html" />
+    <link rel="prev" title="Tutorials" href="tutorials.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> ETOL
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../overview/overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../setup/setup.html">Setup</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../overview/build.html">Build</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="tutorials.html">Tutorials</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Creating a VGP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="eSolver.html">Creating an eSolver</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../overview/acknowledgement.html">Acknowledgements</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">ETOL</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="tutorials.html">Tutorials</a> &raquo;</li>
+        
+      <li>Creating a VGP</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/tutorials/vgp.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="creating-a-vgp">
+<span id="tutorial-vgp"></span><h1>Creating a VGP<a class="headerlink" href="#creating-a-vgp" title="Permalink to this headline">¶</a></h1>
+<p>In this tutorial, a two-dimensional single integrator vehicle guidance problem (VGP) is considered.</p>
+<img alt="../_images/vgp.png" src="../_images/vgp.png" />
+<p>The VGP is expressed as an optimal control problem,</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}\underset{\textbf{u}(\cdot)}{\min}\:\mathcal{J}(\textbf{u}(\cdot)) &amp;= \int_{0}^{t_f}\left(u_{x}^2(t) + u_{y}^2(t)\right)\\
+\text{subject to}\hspace{0.6cm}&amp;\\
+\dot{x}(t) &amp;= u_x(t),\: \forall t \in [0, t_f]\\
+\dot{y}(t) &amp;= u_y(t),\: \forall t \in [0, t_f]\\
+x(0) &amp;= x_0 \\
+y(0) &amp;= y_0 \\
+x(t_f) &amp;= x_f \pm \epsilon_x\\
+y(t_f) &amp;= y_f \pm \epsilon_y \\
+\langle x(t), y(t) \rangle &amp;\notin \text{ static obstacle,}\: \forall t \in [0, t_f]\\
+\langle x(t), y(t) \rangle &amp;\notin \text{ moving obstacle,}\: \forall t \in [0, t_f]\\
+\langle x(t), y(t) \rangle &amp;\in \mathcal{D},\: \forall t \in [0, t_f]\\
+\langle u_x(t), u_y(t) \rangle &amp;\in U,\: \forall t \in [0, t_f]\end{split}\]</div>
+<p>where <span class="math notranslate nohighlight">\(x\)</span> and <span class="math notranslate nohighlight">\(y\)</span> are state variables, <span class="math notranslate nohighlight">\(x_0\)</span> and <span class="math notranslate nohighlight">\(y_0\)</span> are initial states for their respective variables, <span class="math notranslate nohighlight">\(x_f\)</span> and <span class="math notranslate nohighlight">\(y_f\)</span> are goal states, <span class="math notranslate nohighlight">\(\epsilon_x\)</span> and <span class="math notranslate nohighlight">\(\epsilon_y\)</span> are error tolerances, <span class="math notranslate nohighlight">\(u_x(\cdot)\)</span> and <span class="math notranslate nohighlight">\(u_y(\cdot)\)</span> are control functions, <span class="math notranslate nohighlight">\(\mathcal{D}\)</span> and <span class="math notranslate nohighlight">\(U\)</span> are compact subsets of <span class="math notranslate nohighlight">\(\mathbb{R}^2\)</span>.</p>
+<p>ETOL’s TrajectoryOptimizer application programming interface (API) provides methods that set each component of the VGP. In addition, many components can be specified in an extensible markup language (XML) file and loaded at runtime. The XML file can be used to specify the parameters for the state variables, control variables, static obstacles, and moving obstacles. Let’s examine an example XML configuration file that defines the parameters for the VGP.</p>
+<div class="highlight-XML notranslate"><div class="highlight"><pre><span></span><span class="cp">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot;?&gt;</span>
+<span class="nt">&lt;etol</span> <span class="na">nsteps=</span><span class="s">&quot;32&quot;</span> <span class="na">dt=</span><span class="s">&quot;0.50&quot;</span><span class="nt">&gt;</span>
+  <span class="nt">&lt;states</span> <span class="na">nstates=</span><span class="s">&quot;2&quot;</span> <span class="na">rhorizon=</span><span class="s">&quot;0&quot;</span><span class="nt">&gt;</span>
+    <span class="nt">&lt;state</span> <span class="na">name=</span><span class="s">&quot;x0&quot;</span> <span class="na">vartype=</span><span class="s">&quot;C&quot;</span> <span class="na">lower=</span><span class="s">&quot;0.00&quot;</span> <span class="na">upper=</span><span class="s">&quot;7.00&quot;</span> <span class="na">initial=</span><span class="s">&quot;1.00&quot;</span> <span class="na">terminal=</span><span class="s">&quot;5.00&quot;</span> <span class="na">tolerance=</span><span class="s">&quot;0.01&quot;</span><span class="nt">/&gt;</span>
+    <span class="nt">&lt;state</span> <span class="na">name=</span><span class="s">&quot;x1&quot;</span> <span class="na">vartype=</span><span class="s">&quot;C&quot;</span> <span class="na">lower=</span><span class="s">&quot;0.00&quot;</span> <span class="na">upper=</span><span class="s">&quot;7.00&quot;</span> <span class="na">initial=</span><span class="s">&quot;2.00&quot;</span> <span class="na">terminal=</span><span class="s">&quot;4.00&quot;</span> <span class="na">tolerance=</span><span class="s">&quot;0.01&quot;</span><span class="nt">/&gt;</span>
+  <span class="nt">&lt;/states&gt;</span>
+  <span class="nt">&lt;controls</span> <span class="na">ncontrols=</span><span class="s">&quot;2&quot;</span> <span class="na">rhorizon=</span><span class="s">&quot;0&quot;</span><span class="nt">&gt;</span>
+    <span class="nt">&lt;control</span> <span class="na">name=</span><span class="s">&quot;u0&quot;</span> <span class="na">vartype=</span><span class="s">&quot;C&quot;</span> <span class="na">lower=</span><span class="s">&quot;-0.50&quot;</span> <span class="na">upper=</span><span class="s">&quot;0.50&quot;</span><span class="nt">/&gt;</span>
+    <span class="nt">&lt;control</span> <span class="na">name=</span><span class="s">&quot;u1&quot;</span> <span class="na">vartype=</span><span class="s">&quot;C&quot;</span> <span class="na">lower=</span><span class="s">&quot;-0.50&quot;</span> <span class="na">upper=</span><span class="s">&quot;0.50&quot;</span><span class="nt">/&gt;</span>
+  <span class="nt">&lt;/controls&gt;</span>
+  <span class="nt">&lt;exzones</span> <span class="na">nzones=</span><span class="s">&quot;2&quot;</span><span class="nt">&gt;</span>
+    <span class="nt">&lt;border</span> <span class="na">name=</span><span class="s">&quot;exz0&quot;</span> <span class="na">ncorners=</span><span class="s">&quot;5&quot;</span><span class="nt">&gt;</span>
+      <span class="nt">&lt;corner</span> <span class="na">x=</span><span class="s">&quot;3.20&quot;</span> <span class="na">y=</span><span class="s">&quot;2.50&quot;</span> <span class="na">z=</span><span class="s">&quot;0.00&quot;</span><span class="nt">/&gt;</span>
+      <span class="nt">&lt;corner</span> <span class="na">x=</span><span class="s">&quot;3.40&quot;</span> <span class="na">y=</span><span class="s">&quot;2.60&quot;</span> <span class="na">z=</span><span class="s">&quot;0.00&quot;</span><span class="nt">/&gt;</span>
+      <span class="nt">&lt;corner</span> <span class="na">x=</span><span class="s">&quot;3.50&quot;</span> <span class="na">y=</span><span class="s">&quot;3.40&quot;</span> <span class="na">z=</span><span class="s">&quot;0.00&quot;</span><span class="nt">/&gt;</span>
+      <span class="nt">&lt;corner</span> <span class="na">x=</span><span class="s">&quot;3.30&quot;</span> <span class="na">y=</span><span class="s">&quot;3.00&quot;</span> <span class="na">z=</span><span class="s">&quot;0.00&quot;</span><span class="nt">/&gt;</span>
+      <span class="nt">&lt;corner</span> <span class="na">x=</span><span class="s">&quot;3.10&quot;</span> <span class="na">y=</span><span class="s">&quot;3.50&quot;</span> <span class="na">z=</span><span class="s">&quot;0.00&quot;</span><span class="nt">/&gt;</span>
+    <span class="nt">&lt;/border&gt;</span>
+    <span class="nt">&lt;border</span> <span class="na">name=</span><span class="s">&quot;exz1&quot;</span> <span class="na">ncorners=</span> <span class="s">&quot;4&quot;</span><span class="nt">&gt;</span>
+      <span class="nt">&lt;corner</span> <span class="na">x=</span><span class="s">&quot;2.20&quot;</span> <span class="na">y=</span><span class="s">&quot;2.50&quot;</span> <span class="na">z=</span><span class="s">&quot;0.00&quot;</span><span class="nt">/&gt;</span>
+      <span class="nt">&lt;corner</span> <span class="na">x=</span><span class="s">&quot;2.40&quot;</span> <span class="na">y=</span><span class="s">&quot;2.60&quot;</span> <span class="na">z=</span><span class="s">&quot;0.00&quot;</span><span class="nt">/&gt;</span>
+      <span class="nt">&lt;corner</span> <span class="na">x=</span><span class="s">&quot;2.50&quot;</span> <span class="na">y=</span><span class="s">&quot;3.40&quot;</span> <span class="na">z=</span><span class="s">&quot;0.00&quot;</span><span class="nt">/&gt;</span>
+      <span class="nt">&lt;corner</span> <span class="na">x=</span><span class="s">&quot;2.10&quot;</span> <span class="na">y=</span><span class="s">&quot;3.50&quot;</span> <span class="na">z=</span><span class="s">&quot;0.00&quot;</span><span class="nt">/&gt;</span>
+   <span class="nt">&lt;/border&gt;</span>
+  <span class="nt">&lt;/exzones&gt;</span>
+<span class="nt">&lt;mexzones</span> <span class="na">nzones=</span><span class="s">&quot;2&quot;</span><span class="nt">&gt;</span>
+  <span class="nt">&lt;track</span> <span class="na">name=</span><span class="s">&quot;mexz0&quot;</span> <span class="na">radius=</span><span class="s">&quot;0.50&quot;</span> <span class="na">nwaypoints=</span><span class="s">&quot;2&quot;</span><span class="nt">&gt;</span>
+    <span class="nt">&lt;waypoint</span> <span class="na">name=</span><span class="s">&quot;pt0&quot;</span> <span class="na">t=</span><span class="s">&quot;0.00&quot;</span> <span class="na">ndatums=</span><span class="s">&quot;2&quot;</span><span class="nt">&gt;</span>
+      <span class="nt">&lt;datum&gt;</span>2.00<span class="nt">&lt;/datum&gt;</span>
+      <span class="nt">&lt;datum&gt;</span>2.00<span class="nt">&lt;/datum&gt;</span>
+    <span class="nt">&lt;/waypoint&gt;</span>
+    <span class="nt">&lt;waypoint</span> <span class="na">name=</span><span class="s">&quot;pt1&quot;</span> <span class="na">t=</span><span class="s">&quot;32.00&quot;</span> <span class="na">ndatums=</span><span class="s">&quot;2&quot;</span><span class="nt">&gt;</span>
+      <span class="nt">&lt;datum&gt;</span>2.50<span class="nt">&lt;/datum&gt;</span>
+      <span class="nt">&lt;datum&gt;</span>2.00<span class="nt">&lt;/datum&gt;</span>
+    <span class="nt">&lt;/waypoint&gt;</span>
+  <span class="nt">&lt;/track&gt;</span>
+  <span class="nt">&lt;track</span> <span class="na">name=</span><span class="s">&quot;mexz1&quot;</span> <span class="na">radius=</span><span class="s">&quot;0.50&quot;</span> <span class="na">nwaypoints=</span><span class="s">&quot;2&quot;</span><span class="nt">&gt;</span>
+    <span class="nt">&lt;waypoint</span> <span class="na">name=</span><span class="s">&quot;pt0&quot;</span> <span class="na">t=</span><span class="s">&quot;0.00&quot;</span> <span class="na">ndatums=</span><span class="s">&quot;2&quot;</span><span class="nt">&gt;</span>
+      <span class="nt">&lt;datum&gt;</span>1.00<span class="nt">&lt;/datum&gt;</span>
+      <span class="nt">&lt;datum&gt;</span>4.00<span class="nt">&lt;/datum&gt;</span>
+    <span class="nt">&lt;/waypoint&gt;</span>
+    <span class="nt">&lt;waypoint</span> <span class="na">name=</span><span class="s">&quot;pt1&quot;</span> <span class="na">t=</span><span class="s">&quot;32.00&quot;</span> <span class="na">ndatums=</span><span class="s">&quot;2&quot;</span><span class="nt">&gt;</span>
+      <span class="nt">&lt;datum&gt;</span>1.00<span class="nt">&lt;/datum&gt;</span>
+      <span class="nt">&lt;datum&gt;</span>3.00<span class="nt">&lt;/datum&gt;</span>
+    <span class="nt">&lt;/waypoint&gt;</span>
+  <span class="nt">&lt;/track&gt;</span>
+  <span class="nt">&lt;/mexzones&gt;</span>
+<span class="nt">&lt;/etol&gt;</span>
+</pre></div>
+</div>
+<p>Let’s examine each part of the problem, starting with the discretization parameters.</p>
+<div class="highlight-XML notranslate"><div class="highlight"><pre><span></span><span class="nt">&lt;etol</span> <span class="na">nsteps=</span><span class="s">&quot;32&quot;</span> <span class="na">dt=</span><span class="s">&quot;0.50&quot;</span><span class="nt">&gt;</span>
+</pre></div>
+</div>
+<p>The nsteps parameter is the number of time steps that occur after the initial state. The dt parameter is time step size. From these two parameters, the final time <span class="math notranslate nohighlight">\(t_f\)</span> is computed with <span class="math notranslate nohighlight">\(t_f = nsteps \times dt\)</span></p>
+<div class="highlight-XML notranslate"><div class="highlight"><pre><span></span><span class="nt">&lt;states</span> <span class="na">nstates=</span><span class="s">&quot;2&quot;</span> <span class="na">rhorizon=</span><span class="s">&quot;0&quot;</span><span class="nt">&gt;</span>
+  <span class="nt">&lt;state</span> <span class="na">name=</span><span class="s">&quot;x0&quot;</span> <span class="na">vartype=</span><span class="s">&quot;C&quot;</span> <span class="na">lower=</span><span class="s">&quot;0.00&quot;</span> <span class="na">upper=</span><span class="s">&quot;7.00&quot;</span> <span class="na">initial=</span><span class="s">&quot;1.00&quot;</span> <span class="na">terminal=</span><span class="s">&quot;5.00&quot;</span> <span class="na">tolerance=</span><span class="s">&quot;0.01&quot;</span><span class="nt">/&gt;</span>
+  <span class="nt">&lt;state</span> <span class="na">name=</span><span class="s">&quot;x1&quot;</span> <span class="na">vartype=</span><span class="s">&quot;C&quot;</span> <span class="na">lower=</span><span class="s">&quot;0.00&quot;</span> <span class="na">upper=</span><span class="s">&quot;7.00&quot;</span> <span class="na">initial=</span><span class="s">&quot;2.00&quot;</span> <span class="na">terminal=</span><span class="s">&quot;4.00&quot;</span> <span class="na">tolerance=</span><span class="s">&quot;0.01&quot;</span><span class="nt">/&gt;</span>
+<span class="nt">&lt;/states&gt;</span>
+</pre></div>
+</div>
+<p>The nstates parameters is an upper limit on the number of states that are loaded into memory. The rhorizon parameter means reverse horizon and it specifies how many prior time steps are needed when computing the derivatives. There are two states with names x0 and x1. The vartypes means variable types and a value ‘C’ means continuous, ‘B’ means binary, ‘I’ means integer. Each state also has a lower bound, upper bound, initial value, terminal value, and error tolerance.</p>
+<div class="highlight-XML notranslate"><div class="highlight"><pre><span></span><span class="nt">&lt;controls</span> <span class="na">ncontrols=</span><span class="s">&quot;2&quot;</span> <span class="na">rhorizon=</span><span class="s">&quot;0&quot;</span><span class="nt">&gt;</span>
+  <span class="nt">&lt;control</span> <span class="na">name=</span><span class="s">&quot;u0&quot;</span> <span class="na">vartype=</span><span class="s">&quot;C&quot;</span> <span class="na">lower=</span><span class="s">&quot;-0.50&quot;</span> <span class="na">upper=</span><span class="s">&quot;0.50&quot;</span><span class="nt">/&gt;</span>
+  <span class="nt">&lt;control</span> <span class="na">name=</span><span class="s">&quot;u1&quot;</span> <span class="na">vartype=</span><span class="s">&quot;C&quot;</span> <span class="na">lower=</span><span class="s">&quot;-0.50&quot;</span> <span class="na">upper=</span><span class="s">&quot;0.50&quot;</span><span class="nt">/&gt;</span>
+<span class="nt">&lt;/controls&gt;</span>
+</pre></div>
+</div>
+<p>The control requires fewer parameters. The only new parameter is ncontrols. This parameter is an upper limit on the number of controls that are loaded into memory.</p>
+<div class="highlight-XML notranslate"><div class="highlight"><pre><span></span><span class="nt">&lt;exzones</span> <span class="na">nzones=</span><span class="s">&quot;2&quot;</span><span class="nt">&gt;</span>
+  <span class="nt">&lt;border</span> <span class="na">name=</span><span class="s">&quot;exz0&quot;</span> <span class="na">ncorners=</span><span class="s">&quot;5&quot;</span><span class="nt">&gt;</span>
+    <span class="nt">&lt;corner</span> <span class="na">x=</span><span class="s">&quot;3.20&quot;</span> <span class="na">y=</span><span class="s">&quot;2.50&quot;</span> <span class="na">z=</span><span class="s">&quot;0.00&quot;</span><span class="nt">/&gt;</span>
+    <span class="nt">&lt;corner</span> <span class="na">x=</span><span class="s">&quot;3.40&quot;</span> <span class="na">y=</span><span class="s">&quot;2.60&quot;</span> <span class="na">z=</span><span class="s">&quot;0.00&quot;</span><span class="nt">/&gt;</span>
+    <span class="nt">&lt;corner</span> <span class="na">x=</span><span class="s">&quot;3.50&quot;</span> <span class="na">y=</span><span class="s">&quot;3.40&quot;</span> <span class="na">z=</span><span class="s">&quot;0.00&quot;</span><span class="nt">/&gt;</span>
+    <span class="nt">&lt;corner</span> <span class="na">x=</span><span class="s">&quot;3.30&quot;</span> <span class="na">y=</span><span class="s">&quot;3.00&quot;</span> <span class="na">z=</span><span class="s">&quot;0.00&quot;</span><span class="nt">/&gt;</span>
+    <span class="nt">&lt;corner</span> <span class="na">x=</span><span class="s">&quot;3.10&quot;</span> <span class="na">y=</span><span class="s">&quot;3.50&quot;</span> <span class="na">z=</span><span class="s">&quot;0.00&quot;</span><span class="nt">/&gt;</span>
+  <span class="nt">&lt;/border&gt;</span>
+  <span class="nt">&lt;border</span> <span class="na">name=</span><span class="s">&quot;exz1&quot;</span> <span class="na">ncorners=</span> <span class="s">&quot;4&quot;</span><span class="nt">&gt;</span>
+    <span class="nt">&lt;corner</span> <span class="na">x=</span><span class="s">&quot;2.20&quot;</span> <span class="na">y=</span><span class="s">&quot;2.50&quot;</span> <span class="na">z=</span><span class="s">&quot;0.00&quot;</span><span class="nt">/&gt;</span>
+    <span class="nt">&lt;corner</span> <span class="na">x=</span><span class="s">&quot;2.40&quot;</span> <span class="na">y=</span><span class="s">&quot;2.60&quot;</span> <span class="na">z=</span><span class="s">&quot;0.00&quot;</span><span class="nt">/&gt;</span>
+    <span class="nt">&lt;corner</span> <span class="na">x=</span><span class="s">&quot;2.50&quot;</span> <span class="na">y=</span><span class="s">&quot;3.40&quot;</span> <span class="na">z=</span><span class="s">&quot;0.00&quot;</span><span class="nt">/&gt;</span>
+    <span class="nt">&lt;corner</span> <span class="na">x=</span><span class="s">&quot;2.10&quot;</span> <span class="na">y=</span><span class="s">&quot;3.50&quot;</span> <span class="na">z=</span><span class="s">&quot;0.00&quot;</span><span class="nt">/&gt;</span>
+  <span class="nt">&lt;/border&gt;</span>
+<span class="nt">&lt;/exzones&gt;</span>
+</pre></div>
+</div>
+<p>The static obstacles are defined by exzones, which stands for exclusion zones. The nzones parameter is an upper limit on the number of exzones to load. Each exzone is defined by its border and a border is defined by a ordered list of corners that are connected to form polygon. To form this polygon, the last and first corners are connected. The ncorners parameters is an upper limit on the number of corners to load for a exzone. The exzone is mainly used to define the location of static physical obstacles relative to an arbitrary inertial frame.</p>
+<div class="highlight-XML notranslate"><div class="highlight"><pre><span></span><span class="nt">&lt;mexzones</span> <span class="na">nzones=</span><span class="s">&quot;2&quot;</span><span class="nt">&gt;</span>
+  <span class="nt">&lt;track</span> <span class="na">name=</span><span class="s">&quot;mexz0&quot;</span> <span class="na">radius=</span><span class="s">&quot;0.50&quot;</span> <span class="na">nwaypoints=</span><span class="s">&quot;2&quot;</span><span class="nt">&gt;</span>
+    <span class="nt">&lt;waypoint</span> <span class="na">name=</span><span class="s">&quot;pt0&quot;</span> <span class="na">t=</span><span class="s">&quot;0.00&quot;</span> <span class="na">ndatums=</span><span class="s">&quot;2&quot;</span><span class="nt">&gt;</span>
+      <span class="nt">&lt;datum&gt;</span>2.00<span class="nt">&lt;/datum&gt;</span>
+      <span class="nt">&lt;datum&gt;</span>2.00<span class="nt">&lt;/datum&gt;</span>
+    <span class="nt">&lt;/waypoint&gt;</span>
+    <span class="nt">&lt;waypoint</span> <span class="na">name=</span><span class="s">&quot;pt1&quot;</span> <span class="na">t=</span><span class="s">&quot;32.00&quot;</span> <span class="na">ndatums=</span><span class="s">&quot;2&quot;</span><span class="nt">&gt;</span>
+      <span class="nt">&lt;datum&gt;</span>2.50<span class="nt">&lt;/datum&gt;</span>
+      <span class="nt">&lt;datum&gt;</span>2.00<span class="nt">&lt;/datum&gt;</span>
+    <span class="nt">&lt;/waypoint&gt;</span>
+  <span class="nt">&lt;/track&gt;</span>
+  <span class="nt">&lt;track</span> <span class="na">name=</span><span class="s">&quot;mexz1&quot;</span> <span class="na">radius=</span><span class="s">&quot;0.50&quot;</span> <span class="na">nwaypoints=</span><span class="s">&quot;2&quot;</span><span class="nt">&gt;</span>
+    <span class="nt">&lt;waypoint</span> <span class="na">name=</span><span class="s">&quot;pt0&quot;</span> <span class="na">t=</span><span class="s">&quot;0.00&quot;</span> <span class="na">ndatums=</span><span class="s">&quot;2&quot;</span><span class="nt">&gt;</span>
+      <span class="nt">&lt;datum&gt;</span>1.00<span class="nt">&lt;/datum&gt;</span>
+      <span class="nt">&lt;datum&gt;</span>4.00<span class="nt">&lt;/datum&gt;</span>
+    <span class="nt">&lt;/waypoint&gt;</span>
+    <span class="nt">&lt;waypoint</span> <span class="na">name=</span><span class="s">&quot;pt1&quot;</span> <span class="na">t=</span><span class="s">&quot;32.00&quot;</span> <span class="na">ndatums=</span><span class="s">&quot;2&quot;</span><span class="nt">&gt;</span>
+      <span class="nt">&lt;datum&gt;</span>1.00<span class="nt">&lt;/datum&gt;</span>
+      <span class="nt">&lt;datum&gt;</span>3.00<span class="nt">&lt;/datum&gt;</span>
+    <span class="nt">&lt;/waypoint&gt;</span>
+  <span class="nt">&lt;/track&gt;</span>
+<span class="nt">&lt;/mexzones&gt;</span>
+</pre></div>
+</div>
+<p>The moving obstacles are defined by mexzones, which stands for moving exclusion zones. A mexzone is a closed ball with a fixed radius and a center that follows a track. This track is defined by a time interpolation of waypoints. the nwaypoints parameter is an upper limit on the number of waypoints for a track. Each waypoint is defined by an ordered list of scalars and each scalar is called datum. The ndatums is an upper limit on the number of datum to load. A key benefit of the mexzones is that it is not limited to spatial obstacles. This feature can be used to specify obstacles to n-dimensional state state space.</p>
+<p>The VGP in this tutorial also has an objective function, time derivative functions, and constraint functions. These functions should be formed from the parameters that are loaded into a TrajectoryOptimizer object. In addition, these functions are passed to eSolvers through an TrajectoryOptimizer object. Consequently, these functions must be created with the eSolver datatypes. The ETOL examples demonstrate how these functions should be tailored for a specific eSolver.</p>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="eSolver.html" class="btn btn-neutral float-right" title="Creating an eSolver" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="tutorials.html" class="btn btn-neutral float-left" title="Tutorials" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2020, Olatunde Sanni
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

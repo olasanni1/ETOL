@@ -1,0 +1,342 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>eOMPL Setup &mdash; ETOL  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="ePSOPT Setup" href="psopt.html" />
+    <link rel="prev" title="eGurobi Setup" href="gurobi.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> ETOL
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../overview/overview.html">Overview</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="setup.html">Setup</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="overview.html">System Requirements</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="eSolver.html">Extensible Solvers</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="glpk.html">eGLPK Setup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="gurobi.html">eGurobi Setup</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">eOMPL Setup</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#windows-setup">Windows Setup</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="psopt.html">ePSOPT Setup</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../overview/build.html">Build</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorials/tutorials.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../overview/acknowledgement.html">Acknowledgements</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">ETOL</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="setup.html">Setup</a> &raquo;</li>
+        
+          <li><a href="eSolver.html">Extensible Solvers</a> &raquo;</li>
+        
+      <li>eOMPL Setup</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/setup/ompl.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="eompl-setup">
+<span id="ompl"></span><h1>eOMPL Setup<a class="headerlink" href="#eompl-setup" title="Permalink to this headline">¶</a></h1>
+<p>The <a class="reference external" href="https://ompl.kavrakilab.org/">Open Motion Planning Library (OMPL)</a> is an open-source library that contains many sampling-based motion planning libraries. Sampling-based algorithms are able to solve VGPs. eOMPL provides an interface between ETOL and GLPK for the purpose of solving a VGP.</p>
+<p>The OMPL website provides an <a class="reference external" href="https://ompl.kavrakilab.org/installation.html">Ubuntu OMPL installation script</a>. Although this same website provides Microsoft Windows installation instructions, these instructions will not be used because they do not use MSYS2.</p>
+<div class="section" id="windows-setup">
+<h2>Windows Setup<a class="headerlink" href="#windows-setup" title="Permalink to this headline">¶</a></h2>
+<p>The following steps are modified version of the Linux (generic) installation instructions at the OMPL website.</p>
+<ol class="arabic">
+<li><p>If MSYS2 is not installed, complete the instructions in the <a class="reference internal" href="windows.html#windows"><span class="std std-ref">Windows Setup</span></a> section.</p></li>
+<li><p>Install prerequisite software with pacman.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pacman</span> <span class="o">-</span><span class="n">S</span> <span class="n">mingw</span><span class="o">-</span><span class="n">w64</span><span class="o">-</span><span class="n">x86_64</span><span class="o">-</span><span class="n">eigen3</span> <span class="n">mingw</span><span class="o">-</span><span class="n">w64</span><span class="o">-</span><span class="n">x86_64</span><span class="o">-</span><span class="n">libyaml</span> <span class="n">mingw</span><span class="o">-</span><span class="n">w64</span><span class="o">-</span><span class="n">x86_64</span><span class="o">-</span><span class="n">yaml</span><span class="o">-</span><span class="n">cpp</span>
+</pre></div>
+</div>
+</li>
+<li><p>Install prerequisite python packages with pip.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">vU</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">CastXML</span><span class="o">/</span><span class="n">pygccxml</span><span class="o">/</span><span class="n">archive</span><span class="o">/</span><span class="n">develop</span><span class="o">.</span><span class="n">zip</span> <span class="n">pyplusplus</span>
+</pre></div>
+</div>
+</li>
+<li><p>Install libccd</p>
+<ol class="loweralpha">
+<li><p>Open a MSYS Shell</p></li>
+<li><p>Download libccd</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">danfis</span><span class="o">/</span><span class="n">libccd</span><span class="o">.</span><span class="n">git</span>
+</pre></div>
+</div>
+</li>
+<li><p>Change directory to libccd</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">libccd</span>
+</pre></div>
+</div>
+</li>
+<li><p>Generate build files</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cmake</span> <span class="o">-</span><span class="n">G</span> <span class="s2">&quot;Unix Makefiles&quot;</span> <span class="o">-</span><span class="n">DENABLE_DOUBLE_PRECISION</span><span class="o">=</span><span class="n">ON</span> \
+<span class="o">-</span><span class="n">DBUILD_SHARED_LIBS</span><span class="o">=</span><span class="n">ON</span> <span class="o">-</span><span class="n">DCMAKE_INSTALL_PREFIX</span><span class="o">=/</span><span class="n">c</span><span class="o">/</span><span class="n">msys64</span><span class="o">/</span><span class="n">mingw64</span>
+</pre></div>
+</div>
+</li>
+<li><p>Make and install</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">make</span> <span class="o">&amp;&amp;</span> <span class="n">make</span> <span class="n">install</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</li>
+<li><p>Install Open Dynamics Engine (ODE)</p>
+<ol class="loweralpha">
+<li><p>Open a MSYS Shell</p></li>
+<li><p>Download ODE. For example for ode-0.16.1</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wget</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">bitbucket</span><span class="o">.</span><span class="n">org</span><span class="o">/</span><span class="n">odedevs</span><span class="o">/</span><span class="n">ode</span><span class="o">/</span><span class="n">downloads</span><span class="o">/</span><span class="n">ode</span><span class="o">-</span><span class="mf">0.16</span><span class="o">.</span><span class="mf">1.</span><span class="n">tar</span><span class="o">.</span><span class="n">gz</span>
+</pre></div>
+</div>
+</li>
+<li><p>Extract the files</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tar</span> <span class="o">-</span><span class="n">xzvf</span> <span class="n">ode</span><span class="o">-.</span><span class="mf">16.1</span><span class="o">.</span><span class="n">tar</span><span class="o">.</span><span class="n">gz</span>
+</pre></div>
+</div>
+</li>
+<li><p>Change directory to ODE</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">ode</span><span class="o">-</span><span class="mf">0.16</span><span class="o">.</span><span class="mi">1</span>
+</pre></div>
+</div>
+</li>
+<li><p>Create a build folder</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mkdir</span> <span class="n">build</span> <span class="o">&amp;&amp;</span> <span class="n">cd</span> <span class="n">build</span>
+</pre></div>
+</div>
+</li>
+<li><p>Generate build files</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cmake</span> <span class="o">..</span> <span class="o">-</span><span class="n">G</span> <span class="s2">&quot;Unix Makefiles&quot;</span> <span class="o">-</span><span class="n">DCMAKE_INSTALL_PREFIX</span><span class="o">=/</span><span class="n">c</span><span class="o">/</span><span class="n">msys64</span><span class="o">/</span><span class="n">mingw64</span> \
+<span class="o">-</span><span class="n">DODE_WITH_LIBCCD</span><span class="o">=</span><span class="n">ON</span> <span class="o">-</span><span class="n">DBUILD_SHARED_LIBS</span><span class="o">=</span><span class="n">ON</span> <span class="o">-</span><span class="n">DODE_DOUBLE_PRECISION</span><span class="o">=</span><span class="n">ON</span> \
+<span class="o">-</span><span class="n">DODE_WITH_DEMOS</span><span class="o">=</span><span class="n">OFF</span> <span class="o">-</span><span class="n">DODE_WITH_TESTS</span><span class="o">=</span><span class="n">OFF</span>
+</pre></div>
+</div>
+</li>
+<li><p>Make and install</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">make</span> <span class="o">&amp;&amp;</span> <span class="n">make</span> <span class="n">install</span>
+</pre></div>
+</div>
+</li>
+<li><p>Change the name of the “libode_double” file in the /mingw64/bin and /mingw64/lib folder to “libode”.</p></li>
+</ol>
+</li>
+<li><p>Install OMPL</p>
+<ol class="loweralpha">
+<li><p>Open a MSYS shell</p></li>
+<li><p>Download OMPL</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">ompl</span><span class="o">/</span><span class="n">ompl</span><span class="o">.</span><span class="n">git</span>
+</pre></div>
+</div>
+</li>
+<li><p>Change directory to ompl</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">ompl</span>
+</pre></div>
+</div>
+</li>
+<li><p>Generate build folder</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mkdir</span> <span class="o">-</span><span class="n">p</span> <span class="n">build</span><span class="o">/</span><span class="n">Release</span>
+</pre></div>
+</div>
+</li>
+<li><p>Change directory to the build folder</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="n">build</span><span class="o">/</span><span class="n">Release</span>
+</pre></div>
+</div>
+</li>
+<li><p>Configure the build</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cmake</span> <span class="o">../..</span> <span class="o">-</span><span class="n">G</span> <span class="s2">&quot;Unix Makefiles&quot;</span> <span class="o">-</span><span class="n">DCMAKE_INSTALL_PREFIX</span><span class="o">=/</span><span class="n">c</span><span class="o">/</span><span class="n">msys64</span><span class="o">/</span><span class="n">mingw64</span> <span class="o">-</span><span class="n">DOMPL_BUILD_DEMOS</span><span class="o">=</span><span class="n">OFF</span>
+</pre></div>
+</div>
+</li>
+<li><p>Build and install</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">make</span> <span class="o">&amp;&amp;</span> <span class="n">make</span> <span class="n">install</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</li>
+</ol>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="psopt.html" class="btn btn-neutral float-right" title="ePSOPT Setup" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="gurobi.html" class="btn btn-neutral float-left" title="eGurobi Setup" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2020, Olatunde Sanni
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
