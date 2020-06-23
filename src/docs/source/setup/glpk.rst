@@ -10,7 +10,7 @@ eGLPK Setup
 On Ubuntu 18.04, GLPK can be installed from the terminal. ::
 
     sudo apt-get update
-    sudo apt-get install glpk-utils
+    sudo apt-get install glpk-utils libglpk-dev
 
 On Windows 10, GLPK can be installed from the MSYS2 shell. ::
 
