@@ -14,13 +14,8 @@ if(PSOPT_FOUND)
 
   target_include_directories(${PROJECT_NAME} PRIVATE ${PSOPT_INCLUDE_DIRS})
 
-  if(UNIX)
-    target_compile_definitions(${PROJECT_NAME} PUBLIC LAPACK USE_IPOPT
-                                                      SPARSE_MATRIX UNIX)
-  else(UNIX)
-    target_compile_definitions(${PROJECT_NAME} PUBLIC LAPACK USE_IPOPT
-                                                      SPARSE_MATRIX)
-  endif(UNIX)
+  target_compile_definitions(${PROJECT_NAME} PRIVATE ${PSOPT_DEFINITIONS})
+
 else()
   message("Skipping ePSOPT...")
   message("To build this, create a PSOPT_HOME \

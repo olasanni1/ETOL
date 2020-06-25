@@ -5,16 +5,12 @@ ePSOPT Setup
 
 Similar to ETOL, `PSOPT`_ is an open source software package that relies on open source packages. The library can be obtained at https://github.com/PSOPT/psopt. It comes with an Ubuntu 18.04 install script, which also installs the prerequisite software packages. The library does not provide an install script for other operating systems, such as Windows. However, PSOPT has been successfully used on Windows with ePSOPT.
 
-.. _PSOPT : http://www.psopt.org/
-
 Windows Setup
 -------------
 
 Many packages need to be built from source. The primary packages are `IPOPT`_ and `ADOL-C`_. These two packages require additional open source packages too. The following steps provide instructions for building PSOPT and its dependencies on a Windows 10 machine.
 
-.. _IPOPT : https://coin-or.github.io/Ipopt/index.html
 
-.. _ADOL-C : https://github.com/coin-or/ADOL-C
 
 1. If MSYS2 is not installed, complete the instructions in the :ref:`windows` section.
 
@@ -89,13 +85,7 @@ Many packages need to be built from source. The primary packages are `IPOPT`_ an
 
         make && make install
 
-.. _ADOL-C : https://github.com/coin-or/ADOL-C
-
 #. Install a `IPOPT Linear Solver`_. For example the `Harwell Subroutines Library`_ (HSL) was successfully used on Windows.
-
-.. _IPOPT Linear Solver : https://coin-or.github.io/Ipopt/INSTALL.html
-
-.. _Harwell Subroutines Library : http://www.hsl.rl.ac.uk/ipopt/
 
 #. Install IPOPT such that it dynamically loads a linear solver
 
@@ -129,9 +119,7 @@ Many packages need to be built from source. The primary packages are `IPOPT`_ an
 
         make install
 
-# Install a PDFLib-Lite shared library based on `MinGW32 Linux Distro Notes`_
-
-.. _MinGW32 Linux Distro Notes : http://www.davidgis.fr/documentation/Build_Prebuilt_Toolchain_MinGW-w64_for_Linux-32bits_GCC-7.2.0_Testing/#pdflib-lite-7-0-5p3
+#. Install a PDFLib-Lite shared library based on `MinGW32 Linux Distro Notes`_
 
    a. Open a MSYS2 shell
 
@@ -205,9 +193,91 @@ Many packages need to be built from source. The primary packages are `IPOPT`_ an
 
         unzip ./lusol.zip
 
-   #. Edit psopt.h and plot.cxx in ./PSOPT/search, by changing all instances of 'const string& title' to 'const char* title'
+   #. Edit ./Makefile.
 
-   #. Edit NLP_interface.cxx, to use the preferred linear solver. For example, for HSL ma57, change 'app->Options()->SetStringValue("linear_solver","ma27");' to 'app->Options()->SetStringValue("linear_solver","ma57");'
+      I. Delete lines 194 and 186, which are for $(CXSPARSE).
+
+      #. Change the following lines ::
+
+           9     prefix = /mingw64
+           179   all: $(DMATRIX_LIBS) $(LUSOL_LIBS) $(PSOPT_LIBS)
+
+   #. Edit ./dmatrix/lib/Makefile. Change the following lines ::
+
+        18    IPOPTINCDIR = ${prefix}/include/coin-or
+        27    CXX           = g++
+        28    CC            = gcc
+        29    CXXFLAGS      = -O0 -g -I$(SNOPTDIR)/cppsrc -I$(DMATRIXDIR)/include -I$(SNOPTDIR)/cppexamples -I$(PSOPTSRCDIR) -DLAPACK -DUNIX -DSPARSE_MATRIX -DUSE_SNOPT -DUSE_IPOPT -I$(CXSPARSE)/Include -I$(LUSOL) -I$(CXSPARSE)/../SuiteSparse_config -I$(IPOPTINCDIR) -fomit-frame-pointer -pipe -DNDEBUG -fPIC -DHAVE_MALLOC
+
+   #. Edit ./PSOPT/lib/Makefile. Change the following lines ::
+
+        16    prefix = /mingw64
+        18    IPOPTINCDIR = -I${prefix}/include/coin-or
+        27    CXX           = g++
+        28    CC            = gcc
+        29    CXXFLAGS      = -O0 -g -I${prefix}/include -I${prefix}/include/adolc -I$(DMATRIXDIR)/include -I$(SNOPTDIR)/cppexamples -I$(PSOPTSRCDIR) -DLAPACK -DWIN32 -DSPARSE_MATRIX -DUSE_IPOPT -I$(LUSOL) $(IPOPTINCDIR) -fomit-frame-pointer -pipe -DNDEBUG -fPIC -DHAVE_MALLOC -std=c++11  -DPSOPT_EXPORT
+
+   #. Edit plot.cxx and psopt.h in ./PSOPT/src, by replacing all instances of "const string& title" to "const string title".
+
+   #. Edit ./PSOPT/src/psopt.h.
+
+      1. Add to beginning of lines 1111 and 1113 ::
+
+           __declspec(dllexport)
+
+      #. Replace lines 39 to 43 with
+
+         .. code-block:: c
+
+            #ifndef PSOPT_API
+            #ifdef WIN32
+            #ifdef PSOPT_EXPORT
+            #define PSOPT_API __declspec(dllexport)
+            #else
+            #define PSOPT_API __declspec(dllimport)
+            #endif
+            #endif
+            #endif
+
+   #. Edit ./PSOPT/src/plot.h. Delete or comment out lines 61 to 65
+
+   #. Edit ./PSOPT/src/IPOPT_interface.cxx. Replace "WIN32" with "MSVC".
+
+   #. Edit ./PSOPT/src/NLP_interface.cxx to use the installed IPOPT linear solver. A list of supported linear solver values are provided at https://coin-or.github.io/Ipopt/OPTIONS.html#OPT_Linear_Solver. For example for HSL ma57, add the following to line 559 ::
+
+        app->Options()->SetStringValue("linear_solver","ma57");
+
+   #. Edit ./dmatrix/include/dmatrixv.h.
+
+      1. Change line 116 to ::
+
+           #define DEC_THREAD __thread
+
+      #. First delete any instance of "=NULL" and "= Null".
+
+      #. Replace any instance of "ntype=0"  with "ntype".
+
+      #. Between lines 1725 to 1832 replace:
+
+         a. "[]" with "[] = NULL"
+
+         #. "* U" with "* U = NULL"
+
+         #. "* V" with "* V = NULL"
+
+         #. "* rindx" with "* rindx = NULL"
+
+         #. "* cindx" with "* cindx = NULL"
+
+         #. "int ntype" with "int ntype = 0"
+
+      #. Between lines 2443 to 2484, replace:
+
+         a. "[]" with "[] = NULL"
+
+         #. "* U" with "* U = NULL"
+
+         #. "* V" with "* V = NULL"
 
    #. Build PSOPT
 
@@ -218,3 +288,16 @@ Many packages need to be built from source. The primary packages are `IPOPT`_ an
    #. Create a PSOPT_HOME environment variable that point points the PSOPT root directory. For example, in bashrc, add the following line at the end of the file ::
 
         export PSOPT_HOME=/home/${USER}/psopt
+
+
+.. _PSOPT : http://www.psopt.org/
+
+.. _IPOPT : https://coin-or.github.io/Ipopt/index.html
+
+.. _ADOL-C : https://github.com/coin-or/ADOL-C
+
+.. _MinGW32 Linux Distro Notes : http://www.davidgis.fr/documentation/Build_Prebuilt_Toolchain_MinGW-w64_for_Linux-32bits_GCC-7.2.0_Testing/#pdflib-lite-7-0-5p3
+
+.. _IPOPT Linear Solver : https://coin-or.github.io/Ipopt/INSTALL.html
+
+.. _Harwell Subroutines Library : http://www.hsl.rl.ac.uk/ipopt/

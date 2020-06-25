@@ -260,11 +260,7 @@
 </li>
 </ol>
 </li>
-</ol>
-<ol class="arabic simple">
 <li><p>Install a <a class="reference external" href="https://coin-or.github.io/Ipopt/INSTALL.html">IPOPT Linear Solver</a>. For example the <a class="reference external" href="http://www.hsl.rl.ac.uk/ipopt/">Harwell Subroutines Library</a> (HSL) was successfully used on Windows.</p></li>
-</ol>
-<ol class="arabic">
 <li><p>Install IPOPT such that it dynamically loads a linear solver</p>
 <ol class="loweralpha">
 <li><p>Open a MSYS2 Shell</p></li>
@@ -303,10 +299,8 @@
 </li>
 </ol>
 </li>
-</ol>
-<p># Install a PDFLib-Lite shared library based on <a class="reference external" href="http://www.davidgis.fr/documentation/Build_Prebuilt_Toolchain_MinGW-w64_for_Linux-32bits_GCC-7.2.0_Testing/#pdflib-lite-7-0-5p3">MinGW32 Linux Distro Notes</a></p>
-<blockquote>
-<div><ol class="loweralpha">
+<li><p>Install a PDFLib-Lite shared library based on <a class="reference external" href="http://www.davidgis.fr/documentation/Build_Prebuilt_Toolchain_MinGW-w64_for_Linux-32bits_GCC-7.2.0_Testing/#pdflib-lite-7-0-5p3">MinGW32 Linux Distro Notes</a></p>
+<ol class="loweralpha">
 <li><p>Open a MSYS2 shell</p></li>
 <li><p>Download PDFLib-Lite</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">Distrotech</span><span class="o">/</span><span class="n">PDFlib</span><span class="o">-</span><span class="n">Lite</span><span class="o">.</span><span class="n">git</span>
@@ -364,8 +358,7 @@
 </div>
 </li>
 </ol>
-</div></blockquote>
-<ol class="arabic">
+</li>
 <li><p>Install PSOPT</p>
 <ol class="loweralpha">
 <li><p>Open a MSYS2 shell</p></li>
@@ -389,8 +382,92 @@
 </pre></div>
 </div>
 </li>
-<li><p>Edit psopt.h and plot.cxx in ./PSOPT/search, by changing all instances of ‘const string&amp; title’ to ‘const char* title’</p></li>
-<li><p>Edit NLP_interface.cxx, to use the preferred linear solver. For example, for HSL ma57, change ‘app-&gt;Options()-&gt;SetStringValue(“linear_solver”,”ma27”);’ to ‘app-&gt;Options()-&gt;SetStringValue(“linear_solver”,”ma57”);’</p></li>
+<li><p>Edit ./Makefile.</p>
+<ol class="upperroman">
+<li><p>Delete lines 194 and 186, which are for $(CXSPARSE).</p></li>
+<li><p>Change the following lines</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>9     prefix = /mingw64
+179   all: $(DMATRIX_LIBS) $(LUSOL_LIBS) $(PSOPT_LIBS)
+</pre></div>
+</div>
+</li>
+</ol>
+</li>
+<li><p>Edit ./dmatrix/lib/Makefile. Change the following lines</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>18    IPOPTINCDIR = ${prefix}/include/coin-or
+27    CXX           = g++
+28    CC            = gcc
+29    CXXFLAGS      = -O0 -g -I$(SNOPTDIR)/cppsrc -I$(DMATRIXDIR)/include -I$(SNOPTDIR)/cppexamples -I$(PSOPTSRCDIR) -DLAPACK -DUNIX -DSPARSE_MATRIX -DUSE_SNOPT -DUSE_IPOPT -I$(CXSPARSE)/Include -I$(LUSOL) -I$(CXSPARSE)/../SuiteSparse_config -I$(IPOPTINCDIR) -fomit-frame-pointer -pipe -DNDEBUG -fPIC -DHAVE_MALLOC
+</pre></div>
+</div>
+</li>
+<li><p>Edit ./PSOPT/lib/Makefile. Change the following lines</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>16    prefix = /mingw64
+18    IPOPTINCDIR = -I${prefix}/include/coin-or
+27    CXX           = g++
+28    CC            = gcc
+29    CXXFLAGS      = -O0 -g -I${prefix}/include -I${prefix}/include/adolc -I$(DMATRIXDIR)/include -I$(SNOPTDIR)/cppexamples -I$(PSOPTSRCDIR) -DLAPACK -DWIN32 -DSPARSE_MATRIX -DUSE_IPOPT -I$(LUSOL) $(IPOPTINCDIR) -fomit-frame-pointer -pipe -DNDEBUG -fPIC -DHAVE_MALLOC -std=c++11  -DPSOPT_EXPORT
+</pre></div>
+</div>
+</li>
+<li><p>Edit plot.cxx and psopt.h in ./PSOPT/src, by replacing all instances of “const string&amp; title” to “const string title”.</p></li>
+<li><p>Edit ./PSOPT/src/psopt.h.</p>
+<ol class="arabic">
+<li><p>Add to beginning of lines 1111 and 1113</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">__declspec</span><span class="p">(</span><span class="n">dllexport</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+<li><p>Replace lines 39 to 43 with</p>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#ifndef PSOPT_API</span>
+<span class="cp">#ifdef WIN32</span>
+<span class="cp">#ifdef PSOPT_EXPORT</span>
+<span class="cp">#define PSOPT_API __declspec(dllexport)</span>
+<span class="cp">#else</span>
+<span class="cp">#define PSOPT_API __declspec(dllimport)</span>
+<span class="cp">#endif</span>
+<span class="cp">#endif</span>
+<span class="cp">#endif</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</li>
+<li><p>Edit ./PSOPT/src/plot.h. Delete or comment out lines 61 to 65</p></li>
+<li><p>Edit ./PSOPT/src/IPOPT_interface.cxx. Replace “WIN32” with “MSVC”.</p></li>
+<li><p>Edit ./PSOPT/src/NLP_interface.cxx to use the installed IPOPT linear solver. A list of supported linear solver values are provided at <a class="reference external" href="https://coin-or.github.io/Ipopt/OPTIONS.html#OPT_Linear_Solver">https://coin-or.github.io/Ipopt/OPTIONS.html#OPT_Linear_Solver</a>. For example for HSL ma57, add the following to line 559</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">app</span><span class="o">-&gt;</span><span class="n">Options</span><span class="p">()</span><span class="o">-&gt;</span><span class="n">SetStringValue</span><span class="p">(</span><span class="s2">&quot;linear_solver&quot;</span><span class="p">,</span><span class="s2">&quot;ma57&quot;</span><span class="p">);</span>
+</pre></div>
+</div>
+</li>
+<li><p>Edit ./dmatrix/include/dmatrixv.h.</p>
+<ol class="arabic">
+<li><p>Change line 116 to</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1">#define DEC_THREAD __thread</span>
+</pre></div>
+</div>
+</li>
+<li><p>First delete any instance of “=NULL” and “= Null”.</p></li>
+<li><p>Replace any instance of “ntype=0”  with “ntype”.</p></li>
+<li><p>Between lines 1725 to 1832 replace:</p>
+<ol class="loweralpha simple">
+<li><p>“[]” with “[] = NULL”</p></li>
+<li><p>“* U” with “* U = NULL”</p></li>
+<li><p>“* V” with “* V = NULL”</p></li>
+<li><p>“* rindx” with “* rindx = NULL”</p></li>
+<li><p>“* cindx” with “* cindx = NULL”</p></li>
+<li><p>“int ntype” with “int ntype = 0”</p></li>
+</ol>
+</li>
+<li><p>Between lines 2443 to 2484, replace:</p>
+<ol class="loweralpha simple">
+<li><p>“[]” with “[] = NULL”</p></li>
+<li><p>“* U” with “* U = NULL”</p></li>
+<li><p>“* V” with “* V = NULL”</p></li>
+</ol>
+</li>
+</ol>
+</li>
 <li><p>Build PSOPT</p>
 <div class="highlight-none notranslate"><div class="highlight"><pre><span></span>make all
 </pre></div>
