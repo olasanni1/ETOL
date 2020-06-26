@@ -16,7 +16,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 include_directories(${PROJECT_SOURCE_DIR}/../include)
 
-SET (SUBDIRS TrajectoryOptimizer eGurobi ePSOPT eGLPK eOMPL Examples)
+SET (SUBDIRS TrajectoryOptimizer eGurobi ePSOPT eGLPK eOMPL eDymos Examples)
 
 FOREACH(subdir ${SUBDIRS})
   ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/${subdir})
