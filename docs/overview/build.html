@@ -37,7 +37,7 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Tutorials" href="../tutorials/tutorials.html" />
-    <link rel="prev" title="ePSOPT Setup" href="../setup/psopt.html" /> 
+    <link rel="prev" title="eDymos Setup" href="../setup/dymos.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -170,18 +170,36 @@
 </pre></div>
 </div>
 </li>
-<li><p>The build files are generated with CMake. This program finds the header files and library files that ETOL’s components need. If cmake is unable to find the required files for a ETOL component, it skips it. CMake also displays information that provides insight as to why a ETOL component is skipped.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cmake</span> <span class="o">../</span><span class="n">src</span> <span class="o">-</span><span class="n">G</span> <span class="s2">&quot;Unix Makefiles&quot;</span>
+<li><p>The build files are generated with CMake. This program finds the header files and library files that ETOL’s components need. If CMake is unable to find the required files for a ETOL component, it skips it. CMake also displays information that provides insight as to why a ETOL component is skipped.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cmake</span> <span class="o">../</span><span class="n">src</span> <span class="o">-</span><span class="n">G</span> <span class="s2">&quot;Unix Makefiles&quot;</span> <span class="o">-</span><span class="n">DCMAKE_BUILD_TYPE</span><span class="o">=</span><span class="n">Release</span>
 </pre></div>
 </div>
 </li>
+<li><p>If an eSolver requires Python3, such as eDymos, the filepath of the Python3 interpreter should be specified. For example,</p>
+<ol class="loweralpha">
+<li><p>On an Ubuntu 18.04 machine use</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cmake</span> <span class="o">../</span><span class="n">src</span> <span class="o">-</span><span class="n">G</span> <span class="s2">&quot;Unix Makefiles&quot;</span> <span class="o">-</span><span class="n">DCMAKE_BUILD_TYPE</span><span class="o">=</span><span class="n">Release</span> <span class="o">-</span><span class="n">DPYTHON_EXECUTABLE</span><span class="o">=/</span><span class="n">usr</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">python3</span>
+</pre></div>
+</div>
+</li>
+<li><p>Whereas, on a Windows machine with MSYS2 use</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cmake</span> <span class="o">../</span><span class="n">src</span> <span class="o">-</span><span class="n">G</span> <span class="s2">&quot;Unix Makefiles&quot;</span> <span class="o">-</span><span class="n">DCMAKE_BUILD_TYPE</span><span class="o">=</span><span class="n">Release</span> <span class="o">-</span><span class="n">DPYTHON_EXECUTABLE</span><span class="o">=/</span><span class="n">mingw64</span><span class="o">/</span><span class="nb">bin</span><span class="o">/</span><span class="n">python3</span>
+</pre></div>
+</div>
+</li>
+</ol>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The PYTHONHOME environment variable may need to be set. If so, set it to the directory of the Python3 binary. For example, on Windows with MSYS2, this directory should be <code class="docutils literal notranslate"><span class="pre">C:\msys64\mingw64</span></code>.</p>
+</div>
+</li>
 <li><p>By default the build files for the ETOL documentation are not generated, but this can be changed with cmake.</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cmake</span> <span class="o">../</span><span class="n">src</span> <span class="o">-</span><span class="n">G</span> <span class="s2">&quot;Unix Makefiles&quot;</span> <span class="o">-</span><span class="n">DBUILD_DOCS</span><span class="o">=</span><span class="n">ON</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cmake</span> <span class="o">../</span><span class="n">src</span> <span class="o">-</span><span class="n">G</span> <span class="s2">&quot;Unix Makefiles&quot;</span> <span class="o">-</span><span class="n">DCMAKE_BUILD_TYPE</span><span class="o">=</span><span class="n">Release</span> <span class="o">-</span><span class="n">DBUILD_DOCS</span><span class="o">=</span><span class="n">ON</span>
 </pre></div>
 </div>
 </li>
 <li><p>Build ETOL</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">make</span> <span class="nb">all</span>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>make all
 </pre></div>
 </div>
 </li>
@@ -204,7 +222,7 @@
         <a href="../tutorials/tutorials.html" class="btn btn-neutral float-right" title="Tutorials" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="../setup/psopt.html" class="btn btn-neutral float-left" title="ePSOPT Setup" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="../setup/dymos.html" class="btn btn-neutral float-left" title="eDymos Setup" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

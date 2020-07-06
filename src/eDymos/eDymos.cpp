@@ -1,367 +1,59 @@
 /******************************************************************************!
+/*!
  * @file
  *
  * @copyright 2020 Olatunde Sanni
  * @author Olatunde Sanni <olasanni1@gmail.com>
+ * @author Emre Yilmaz <ae.emre.yilmaz@gmail.com>
+ * @author Mark Kotwicz <mark.kotwicz@gmail.com>
  * @date 5 June 2020
  * @version 1.0.0
  * @brief A Dymos implementation for ETOL
  * @section DESCRIPTION
  * A <a href="https://github.com/OpenMDAO/dymos">Dymos</a> implementation for
  * the pure virtual methods in the TrajectoryOptimization class. It casts the
- * trajectory optimization problem as a Nonlinear Linear Programming (NLP) type.
- * Constructed to solve optimal control problems like...
- * https://openmdao.github.io/dymos/examples/vanderpol.html
+ * trajectory optimization problem as a Nonlinear Linear Programming (NLP) type
+ * and solves this NLP with an optimizer.
  ******************************************************************************/
-
-#include <ETOL/eDymos.hpp>
 
 #include <pybind11/embed.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
-
 #include <any>
 #include <iostream>
+#include <ETOL/eDymos.hpp>
 
 namespace py = pybind11;
 using namespace py::literals;   // to bring in the `_a` literal   // NOLINT
 
-
-namespace ETOL {
-
 PYBIND11_EMBEDDED_MODULE(edymos, m) {
 // `m` is a `py::module` which is used to bind functions and classes
     m.doc() = "The eDymos implementations for the OpenMDAO ExplicitComponents";
-    m.def("compute", &eDymos::dymosCompute,
+    m.def("compute", &ETOL::eDymos::dymosCompute,
             "Compute OpenMDAO outputs given inputs.");
-    m.def("compute_partials", &eDymos::dymosComputePartials,
+    m.def("compute_partials", &ETOL::eDymos::dymosComputePartials,
             "Compute OpenMDAO sub-jacobian parts.");
 }
 
-eDymos::eDymos() : eDymos::scoped_interpreter(true),
-                            eDymos::TrajectoryOptimizer(),
-                            _np(py::module::import("numpy")),
-                            _om(py::module::import("openmdao.api")),
-                            _dm(py::module::import("dymos")) {
+namespace ETOL {
+
+// Constructor
+
+eDymos::eDymos() :  eDymos::scoped_interpreter(true),
+                    eDymos::TrajectoryOptimizer(),
+                    _np(py::module::import("numpy")),
+                    _om(py::module::import("openmdao.api")),
+                    _dm(py::module::import("dymos")),
+                    optimizer_("SNOPT"), max_iter_(1000), with_coloring_(true),
+                    _alg(_om.attr("Problem")("model"_a = _om.attr("Group")())) ,
+                    _sol(_alg.attr("model").attr("add_subsystem")("traj",
+                            _dm.attr("Trajectory")())),
+                    mesh_refine_(true), mesh_tol_(1.e-3),  max_mesh_iter_(5),
+                    num_segments_(10), order_(3), compressed_(false) {
     this->addODE();
 }
 
-// API
-void eDymos::setup() {
-    // Define a dymos component
-    setAlg();
-
-    setSol();
-
-    setProb();
-    std::cout << "setProb() complete" << std::endl;
-
-    _alg.attr("model").attr("linear_solver") = _om.attr("DirectSolver")();
-    _alg.attr("setup")("check"_a = true);
-
-    setGuess();
-    std::cout << "setGuess() complete" << std::endl;
-
-    _alg.attr("final_setup")();
-    std::cout << "setup complete" << std::endl;
-}
-
-void eDymos::solve() {
-    if (!_alg.attr("run_driver")())
-        getTraj();
-}
-
-void eDymos::debug() {
-    if (_alg.attr("driver").attr("options")["optimizer"].cast<std::string>()
-            == "SNOPT")
-        _alg.attr("driver").attr("opt_settings")["iSumm"] = 6;
-}
-
-void eDymos::close() {}
-
 // Static Members
-
-py::dict eDymos::dymosCompute(void* handle, py::dict inputs) {
-    py::dict kv;
-    scalar_t obj_val;
-
-    std::vector<py::buffer_info> xbufs, ubufs;
-
-    eDymos* ptr = reinterpret_cast<eDymos*>(handle);
-    double dt = ptr->getDt();
-
-    // Extract variable values
-    py::array_t<double> tvec = inputs["t"].cast<py::array_t<double>>();
-    py::buffer_info tbuf = tvec.request();
-
-    for (size_t j(0); j < ptr->getNStates(); j++) {
-        py::array_t<double> xvec = inputs[getStateName(j).c_str()]
-                                      .cast<py::array_t<double>>();
-        xbufs.push_back(xvec.request());
-    }
-
-    for (size_t j(0); j < ptr->getNControls(); j++) {
-        py::array_t<double> uvec = inputs[getControlName(j).c_str()]
-                                      .cast<py::array_t<double>>();
-        ubufs.push_back(uvec.request());
-    }
-
-    // Declare output arrays
-    auto Jdotvec = py::array_t<double>(  // @suppress("Symbol is not resolved")
-            tbuf.size);
-    std::vector<py::array_t<double>> xdotvec(ptr->getNStates(),
-                py::array_t<double>(     // @suppress("Symbol is not resolved")
-                    tbuf.size));
-    std::vector<py::array_t<double>> pvec(ptr->getConstraints()->size(),
-                py::array_t<double>(     // @suppress("Symbol is not resolved")
-                        tbuf.size));
-
-    for (size_t idx(0); idx < tbuf.shape[0]; idx++) {
-        vector_t x, u, dx_val, p_val;
-        // Set variables for callbacks
-        scalar_t t = static_cast<double *>(tbuf.ptr)[idx];
-
-        for_each(xbufs.begin(), xbufs.end(), [&x, &idx](py::buffer_info& xbuf) {
-           x.push_back(static_cast<double *>(xbuf.ptr)[idx]);
-        });
-        for_each(xbufs.begin(), xbufs.end(), [&u, &idx](py::buffer_info& ubuf) {
-           u.push_back(static_cast<double *>(ubuf.ptr)[idx]);
-        });
-
-        // Call callbacks for calculating computes
-        // Objective function
-        obj_val = (*ptr->_objective)(x, u, {std::string()}, {std::string()},
-                t, dt);
-        // State time derivatives
-        for_each(ptr->getGradient()->begin(), ptr->getGradient()->end(),
-            [&x, &u, &t, &dt, &dx_val](f_t* grad) {
-                scalar_t val;
-                val = (*grad)(x, u, {std::string()}, {std::string()}, t, dt);
-                dx_val.push_back(val);
-        });
-        // Path constraints
-        for_each(ptr->getConstraints()->begin(), ptr->getConstraints()->end(),
-            [&x, &u, &t, &dt, &p_val](f_t* con) {
-                scalar_t val;
-                val = (*con)(x, u, {std::string()}, {std::string()}, time, dt);
-                p_val.push_back(val);
-        });
-
-        // Pass the results to the numpy array outputs
-        try {
-            std::vector<double> obj = std::any_cast<std::vector<double>>(
-                    obj_val);
-            static_cast<double*>(Jdotvec.request().ptr)[idx] = obj.at(0);
-
-            size_t sIdx = 0;
-            for_each(dx_val.begin(), dx_val.end(),
-                [&kv, &sIdx, &xdotvec, &idx](scalar_t &val){
-                    static_cast<double*>(xdotvec.at(sIdx++).request().ptr)[idx]
-                       = (std::any_cast<std::vector<double>>(val)).at(0);
-            });
-
-            size_t pIdx = 0;
-            for_each(p_val.begin(), p_val.end(),
-                [&kv, &pIdx, &pvec, &idx](scalar_t &val){
-                    static_cast<double*>(pvec.at(pIdx++).request().ptr)[idx] =
-                            (std::any_cast<std::vector<double>>(val)).at(0);
-            });
-        } catch (...) {
-            std::cout << "Error casting std::any for compute()" << std::endl;
-        }
-    }
-
-    // Store results in the dictionary output
-    kv["Jdot"] = Jdotvec;
-    for (size_t j(0); j < ptr->getNStates(); j++)
-        kv[getDerivName(j).c_str()] = xdotvec.at(j);
-    for (size_t j(0); j < ptr->getConstraints()->size(); j++)
-        kv[getPathConstraintName(j).c_str()] = pvec.at(j);
-    return kv;
-}
-
-py::dict eDymos::dymosComputePartials(void* handle, py::dict inputs) {
-    py::dict kv;
-    scalar_t obj_val;
-
-    std::vector<py::buffer_info> xbufs, ubufs;
-
-    std::cout << "Cast begin complete" << std::endl;
-    eDymos* ptr = reinterpret_cast<eDymos*>(handle);
-    double dt = ptr->getDt();
-    std::cout << "Cast handle complete" << std::endl;
-
-    // Extract variable values
-    py::array_t<double> tvec = inputs["t"].cast<py::array_t<double>>();
-    py::buffer_info tbuf = tvec.request();
-    std::cout << "Cast time complete" << std::endl;
-
-    for (size_t j(0); j < ptr->getNStates(); j++) {
-        py::array_t<double> xvec = inputs[getStateName(j).c_str()]
-                                      .cast<py::array_t<double>>();
-        xbufs.push_back(xvec.request());
-    }
-    std::cout << "Cast state complete" << std::endl;
-
-    for (size_t j(0); j < ptr->getNControls(); j++) {
-        py::array_t<double> uvec = inputs[getControlName(j).c_str()]
-                                      .cast<py::array_t<double>>();
-        ubufs.push_back(uvec.request());
-    }
-    std::cout << "Cast control complete" << std::endl;
-
-    // Declare output arrays
-    std::vector<py::array_t<double>> Jdotvecs(
-            ptr->getNStates() + ptr->getNControls(),
-                py::array_t<double>(    // @suppress("Symbol is not resolved")
-                        tbuf.size));
-    std::vector<py::array_t<double>> xdotvec(
-            ptr->getNStates() * (ptr->getNStates() + ptr->getNControls()),
-                py::array_t<double>(    // @suppress("Symbol is not resolved")
-                    tbuf.size));
-    std::vector<py::array_t<double>> pvec(
-            ptr->getConstraints()->size() * (ptr->getNStates()
-                    + ptr->getNControls()),
-            py::array_t<double>(        // @suppress("Symbol is not resolved")
-                        tbuf.size));
-    std::cout << "Created arrays" << std::endl;
-
-    for (size_t idx(0); idx < tbuf.shape[0]; idx++) {
-        vector_t x, u;
-        std::vector<double> obj;
-        std::vector<std::vector<double>> dx, p;
-        // Set variables for callbacks
-        scalar_t t = static_cast<double *>(tbuf.ptr)[idx];
-        for_each(xbufs.begin(), xbufs.end(), [&x, &idx](py::buffer_info& xbuf) {
-           x.push_back(static_cast<double *>(xbuf.ptr)[idx]);
-        });
-        for_each(xbufs.begin(), xbufs.end(), [&u, &idx](py::buffer_info& ubuf) {
-           u.push_back(static_cast<double *>(ubuf.ptr)[idx]);
-        });
-        std::cout << "Set variables" << std::endl;
-
-
-        // Call callbacks for calculating computes
-        // Objective function
-        obj_val = (*ptr->_objective)(x, u, {std::string()},
-                    {std::string("partials")}, t, dt);
-        try {
-             obj = std::any_cast<std::vector<double>>(obj_val);
-        } catch (...) {
-            std::cout << "Error casting the objective value" << std::endl;
-        }
-        std::cout << "Get obj" << std::endl;
-        // Time derivatives
-        for_each(ptr->getGradient()->begin(), ptr->getGradient()->end(),
-            [&x, &u, &t, &dt, &dx](f_t* grad) {
-                scalar_t val;
-                val = (*grad)(x, u, {std::string()}, {"partials"}, t, dt);
-                try {
-                    dx.push_back(std::any_cast<std::vector<double>>(val));
-                } catch (...) {
-                    std::cout << "Error casting the state derivatives"
-                                << std::endl;
-                }
-        });
-        std::cout << "Get grad" << std::endl;
-        // Path Constraints
-        for_each(ptr->getConstraints()->begin(), ptr->getConstraints()->end(),
-            [&x, &u, &t, &dt, &p](f_t* con) {
-                scalar_t val;
-                val = (*con)(x, u, {std::string()}, {"partials"}, t, dt);
-                try {
-                    p.push_back(std::any_cast<std::vector<double>>(val));
-                } catch (...) {
-                    std::cout << "Error casting the path constraints"
-                            << std::endl;
-                }
-        });
-        std::cout << "Called callbacks" << std::endl;
-        std::cout << "Obj: ";
-        for (auto val : obj)
-            std::cout << val << ", ";
-        std::cout << std::endl;
-        std::cout << "dx0: ";
-        for (auto val : dx.at(0))
-            std::cout << val << ", ";
-        std::cout << std::endl;
-        std::cout << "dx1: ";
-        for (auto val : dx.at(1))
-            std::cout << val << ", ";
-        std::cout << std::endl;
-
-
-        size_t k_jdot(0), k_dx(0), k_p(0);
-        // Pass the partials wrt to states to numpy array outputs
-        for (size_t j(0); j < ptr->getNStates(); j++) {
-            // Set objective partials
-            static_cast<double*>(Jdotvecs.at(k_jdot++).request().ptr)[idx] =
-                    obj.at(j);
-            std::cout << "Add obj to numpy array" << std::endl;
-            // Set state derivative partials
-            for_each(dx.begin(), dx.end(),
-                [&idx, &j, &k_dx, &xdotvec](std::vector<double> &val){
-                    static_cast<double*>(xdotvec.at(k_dx++).request().ptr)[idx]
-                        = val.at(j);
-            });
-            std::cout << "Add dx to numpy array" << std::endl;
-            // Set path constraint partials
-            for_each(p.begin(), p.end(),
-                [&idx, &j, &k_p, &pvec](std::vector<double> &val){
-                    static_cast<double*>(pvec.at(k_p++).request().ptr)[idx] =
-                            val.at(j);
-            });
-            std::cout << "Add p to numpy array" << std::endl;
-        }
-        std::cout << "Set state numpy arrays" << std::endl;
-
-        // Pass the partials wrt to the controls to numpy array outputs
-        for (size_t j(ptr->getNStates());
-                j < (ptr->getNControls() + ptr->getNStates()); j++) {
-            // Set objective partials
-            static_cast<double*>(Jdotvecs.at(k_jdot++).request().ptr)[idx]=
-                    obj.at(j);
-            std::cout << "Add obj to numpy array" << std::endl;
-            // Set state derivative partials
-            for_each(dx.begin(), dx.end(),
-                [&idx, &j, &k_dx, &xdotvec](std::vector<double> &val){
-                    static_cast<double*>(xdotvec.at(k_dx++).request().ptr)[idx]
-                        = val.at(j);
-            });
-            std::cout << "Add dx to numpy array" << std::endl;
-            // Set path constraint partials
-            for_each(p.begin(), p.end(),
-                [&idx, &j, &k_p, &pvec](std::vector<double> &val){
-                    static_cast<double*>(pvec.at(k_p++).request().ptr)[idx] =
-                        val.at(j);
-            });
-            std::cout << "Add p to numpy array" << std::endl;
-        }
-    }
-
-
-    // Store results in the dictionary output
-    size_t jdot_iter(0), dx_iter(0), p_iter(0);
-    for (size_t j(0); j < ptr->getNStates(); j++) {
-        std::string name = getStateName(j);
-        kv[std::string("Jdot_" + name).c_str()] = Jdotvecs.at(jdot_iter++);
-        for (size_t k(0); k < ptr->getNStates(); k++)
-            kv[(getDerivName(k) + "_" + name).c_str()] = xdotvec.at(dx_iter++);
-        for (size_t k(0); k < ptr->getConstraints()->size(); k++)
-            kv[(getPathConstraintName(k)  + "_" + name).c_str()] =
-                    pvec.at(p_iter++);
-    }
-    for (size_t j(0); j < ptr->getNControls(); j++) {
-        std::string name = getControlName(j);
-        kv[std::string("Jdot_" + name).c_str()] = Jdotvecs.at(jdot_iter++);
-        for (size_t k(0); k < ptr->getNStates(); k++)
-            kv[(getDerivName(k) + "_" + name).c_str()] = xdotvec.at(dx_iter++);
-        for (size_t k(0); k < ptr->getConstraints()->size(); k++)
-            kv[(getPathConstraintName(k)  + "_" + name).c_str()] =
-                    pvec.at(p_iter++);
-    }
-    return kv;
-}
 
 std::string eDymos::getStateName(const size_t& sIdx) {
     return("x" + std::to_string(sIdx));
@@ -379,25 +71,363 @@ std::string eDymos::getPathConstraintName(const size_t& pIdx) {
     return("p" + std::to_string(pIdx));
 }
 
-// Private functions
-void eDymos::setAlg() {
-    _alg = _om.attr("Problem")("model"_a = _om.attr("Group")());
-    _alg.attr("driver") = _om.attr("ScipyOptimizeDriver")();
-    _alg.attr("driver").attr("declare_coloring")();
+py::dict eDymos::dymosCompute(void* handle, py::dict inputs) {
+    py::dict kv;
+
+    std::vector<py::buffer_info> xbufs, ubufs;
+
+    eDymos* ptr = reinterpret_cast<eDymos*>(handle);
+    double dt = ptr->getDt();
+
+    // Extract variable values
+    py::array_t<double> tvec = inputs["t"].cast<py::array_t<double>>();
+    py::buffer_info tbuf = tvec.request();
+    for (size_t j(0); j < ptr->getNStates(); j++) {
+        py::array_t<double> xvec = inputs[getStateName(j).c_str()]
+                                      .cast<py::array_t<double>>();
+        xbufs.push_back(xvec.request());
+    }
+    for (size_t j(0); j < ptr->getNControls(); j++) {
+        py::array_t<double> uvec = inputs[getControlName(j).c_str()]
+                                      .cast<py::array_t<double>>();
+        ubufs.push_back(uvec.request());
+    }
+    // Declare output arrays
+    py::array_t<double> jdotvec =
+            py::array_t<double>(  // @suppress("Symbol is not resolved")
+            tbuf.size);
+
+    std::vector<py::array_t<double>> xdotvec;
+    for (size_t i(0); i < ptr->getNStates(); i++)
+        xdotvec.push_back(
+                py::array_t<double>(     // @suppress("Symbol is not resolved")
+                    tbuf.size));
+    std::vector<py::array_t<double>> pvec;
+    for (size_t i(0); i < ptr->getConstraints()->size(); i++)
+        pvec.push_back(
+                py::array_t<double>(     // @suppress("Symbol is not resolved")
+                        tbuf.size));
+    for (size_t idx(0); idx < tbuf.shape[0]; idx++) {
+        scalar_t obj_val;
+        vector_t x, u;
+        std::vector<double> dx_val, p_val;
+        // Set variables for callbacks
+        scalar_t t = reinterpret_cast<double *>(tbuf.ptr)[idx];
+        for_each(xbufs.begin(), xbufs.end(), [&x, &idx](py::buffer_info& xbuf) {
+           x.push_back(reinterpret_cast<double *>(xbuf.ptr)[idx]);
+        });
+        for_each(ubufs.begin(), ubufs.end(), [&u, &idx](py::buffer_info& ubuf) {
+           u.push_back(reinterpret_cast<double *>(ubuf.ptr)[idx]);
+        });
+        // Call callbacks for calculating computes
+        // Objective function
+        obj_val = (*ptr->_objective)(x, u, {std::string()}, {std::string()},
+                t, dt);
+        // State time derivatives
+        for_each(ptr->getGradient()->begin(), ptr->getGradient()->end(),
+            [&x, &u, &t, &dt, &dx_val](f_t* grad) {
+                scalar_t val;
+                val = (*grad)(x, u, {std::string()}, {std::string()}, t, dt);
+                try {
+                    dx_val.push_back((std::any_cast<std::vector<double>>(val))
+                            .at(0));
+                } catch (...) {
+                    std::cout << "Gradient any_cast failed!" << std::endl;
+                }
+        });
+
+        // Path constraints
+        for_each(ptr->getConstraints()->begin(), ptr->getConstraints()->end(),
+            [&x, &u, &t, &dt, &p_val](f_t* con) {
+                scalar_t val;
+                val = (*con)(x, u, {std::string()}, {std::string()}, t, dt);
+                try {
+                    p_val.push_back((std::any_cast<std::vector<double>>(val))
+                            .at(0));
+                } catch (...) {
+                    std::cout << "Path constraint any_cast failed!"
+                            << std::endl;
+                }
+        });
+
+        // Pass the results to the numpy array outputs
+        std::vector<double> obj = std::any_cast<std::vector<double>>(
+                obj_val);
+        reinterpret_cast<double*>(jdotvec.request().ptr)[idx] = obj.at(0);
+        size_t sIdx = 0;
+        for_each(dx_val.begin(), dx_val.end(),
+            [&sIdx, &xdotvec, &idx](double& val){
+            reinterpret_cast<double*>(xdotvec.at(sIdx++).request().ptr)[idx]
+                            = val;
+        });
+        size_t pIdx = 0;
+        for_each(p_val.begin(), p_val.end(),
+            [&pIdx, &pvec, &idx](double& val) {
+            reinterpret_cast<double*>(pvec.at(pIdx++).request().ptr)[idx] = val;
+        });
+    }
+
+    // Store results in the dictionary output
+    kv["jdot"] = jdotvec;
+    for (size_t j(0); j < ptr->getNStates(); j++)
+        kv[getDerivName(j).c_str()] = xdotvec.at(j);
+    for (size_t j(0); j < ptr->getConstraints()->size(); j++)
+        kv[getPathConstraintName(j).c_str()] = pvec.at(j);
+    return kv;
 }
 
-void eDymos::setSol() {
-    _sol =  _alg.attr("model").attr("add_subsystem")("traj",
-                _dm.attr("Trajectory")());
+py::dict eDymos::dymosComputePartials(void* handle, py::dict inputs) {
+    py::dict kv;
+
+    std::vector<py::buffer_info> xbufs, ubufs;
+
+    eDymos* ptr = reinterpret_cast<eDymos*>(handle);
+    double dt = ptr->getDt();
+
+    // Extract variable values
+    py::array_t<double> tvec = inputs["t"].cast<py::array_t<double>>();
+
+    py::buffer_info tbuf = tvec.request();
+
+    for (size_t j(0); j < ptr->getNStates(); j++) {
+        py::array_t<double> xvec = inputs[getStateName(j).c_str()]
+                                      .cast<py::array_t<double>>();
+        xbufs.push_back(xvec.request());
+    }
+
+    for (size_t j(0); j < ptr->getNControls(); j++) {
+        py::array_t<double> uvec = inputs[getControlName(j).c_str()]
+                                      .cast<py::array_t<double>>();
+        ubufs.push_back(uvec.request());
+    }
+
+    // Declare output arrays
+    std::vector<py::array_t<double>> jdotvecs;
+    for (size_t j(0); j < ptr->getNStates() + ptr->getNControls(); j++)
+        jdotvecs.push_back(
+                py::array_t<double>(    // @suppress("Symbol is not resolved")
+                        tbuf.size));
+    std::vector<py::array_t<double>> xdotvec;
+    for (size_t j(0);
+            j < ptr->getNStates() * (ptr->getNStates() + ptr->getNControls());
+                j++)
+        xdotvec.push_back(
+                py::array_t<double>(    // @suppress("Symbol is not resolved")
+                    tbuf.size));
+    std::vector<py::array_t<double>> pvec;
+    for (size_t j(0); j < ptr->getConstraints()->size() * (ptr->getNStates()
+                    + ptr->getNControls()); j++)
+        pvec.push_back(
+                py::array_t<double>(    // @suppress("Symbol is not resolved")
+                        tbuf.size));
+
+    for (size_t idx(0); idx < tbuf.shape[0]; idx++) {
+        scalar_t obj_val;
+        vector_t x, u;
+        std::vector<double> obj;
+        std::vector<std::vector<double>> dx, p;
+        // Set variables for callbacks
+        scalar_t t = reinterpret_cast<double *>(tbuf.ptr)[idx];
+
+        for_each(xbufs.begin(), xbufs.end(), [&x, &idx](py::buffer_info& xbuf) {
+           x.push_back(reinterpret_cast<double *>(xbuf.ptr)[idx]);
+        });
+        for_each(ubufs.begin(), ubufs.end(), [&u, &idx](py::buffer_info& ubuf) {
+           u.push_back(reinterpret_cast<double *>(ubuf.ptr)[idx]);
+        });
+
+        // Call callbacks for calculating computes
+        // Objective function
+        obj_val = (*ptr->_objective)(x, u, {std::string()},
+                    {std::string("partials")}, t, dt);
+        try {
+             obj = std::any_cast<std::vector<double>>(obj_val);
+        } catch (...) {
+            std::cout << "Error casting the objective value" << std::endl;
+        }
+        // State time derivatives
+        for_each(ptr->getGradient()->begin(), ptr->getGradient()->end(),
+            [&x, &u, &t, &dt, &dx](f_t* grad) {
+                scalar_t val;
+                val = (*grad)(x, u, {std::string()}, {"partials"}, t, dt);
+                try {
+                    dx.push_back(std::any_cast<std::vector<double>>(val));
+                } catch (...) {
+                    std::cout << "Error casting the state derivatives"
+                                << std::endl;
+                }
+        });
+        // Path Constraints
+        for_each(ptr->getConstraints()->begin(), ptr->getConstraints()->end(),
+            [&x, &u, &t, &dt, &p](f_t* con) {
+                scalar_t val;
+                val = (*con)(x, u, {std::string()}, {"partials"}, t, dt);
+                try {
+                    p.push_back(std::any_cast<std::vector<double>>(val));
+                } catch (...) {
+                    std::cout << "Error casting the path constraints"
+                            << std::endl;
+                }
+        });
+
+        size_t k_jdot(0), k_dx(0), k_p(0);
+        // Pass the partials wrt to states to numpy array outputs
+        for (size_t j(0); j < ptr->getNStates(); j++) {
+            // Set objective partials
+            reinterpret_cast<double*>(
+                    jdotvecs.at(k_jdot++).request().ptr)[idx] = obj.at(j);
+            // Set state derivative partials
+            for_each(dx.begin(), dx.end(),
+                [&idx, &j, &k_dx, &xdotvec](std::vector<double> &val){
+                reinterpret_cast<double*>(xdotvec.at(k_dx++).request().ptr)[idx]
+                        = val.at(j);
+            });
+            // Set path constraint partials
+            for_each(p.begin(), p.end(),
+                [&idx, &j, &k_p, &pvec](std::vector<double> &val){
+                reinterpret_cast<double*>(pvec.at(k_p++).request().ptr)[idx] =
+                            val.at(j);
+            });
+        }
+
+        // Pass the partials wrt to the controls to numpy array outputs
+        for (size_t j(ptr->getNStates());
+                j < (ptr->getNControls() + ptr->getNStates()); j++) {
+            // Set objective partials
+            reinterpret_cast<double*>(jdotvecs.at(k_jdot++).request().ptr)[idx]=
+                    obj.at(j);
+            // Set state derivative partials
+            for_each(dx.begin(), dx.end(),
+                [&idx, &j, &k_dx, &xdotvec](std::vector<double> &val){
+                reinterpret_cast<double*>(xdotvec.at(k_dx++).request().ptr)[idx]
+                        = val.at(j);
+            });
+            // Set path constraint partials
+            for_each(p.begin(), p.end(),
+                [&idx, &j, &k_p, &pvec](std::vector<double> &val){
+                reinterpret_cast<double*>(pvec.at(k_p++).request().ptr)[idx] =
+                        val.at(j);
+            });
+        }
+    }
+
+
+    // Store results in the dictionary output
+    size_t jdot_iter(0), dx_iter(0), p_iter(0);
+    for (size_t j(0); j < ptr->getNStates(); j++) {
+        std::string name = getStateName(j);
+        kv[std::string("jdot_" + name).c_str()] = jdotvecs.at(jdot_iter++);
+        for (size_t k(0); k < ptr->getNStates(); k++)
+            kv[(getDerivName(k) + "_" + name).c_str()] = xdotvec.at(dx_iter++);
+        for (size_t k(0); k < ptr->getConstraints()->size(); k++)
+            kv[(getPathConstraintName(k)  + "_" + name).c_str()] =
+                    pvec.at(p_iter++);
+    }
+    for (size_t j(0); j < ptr->getNControls(); j++) {
+        std::string name = getControlName(j);
+        kv[std::string("jdot_" + name).c_str()] = jdotvecs.at(jdot_iter++);
+        for (size_t k(0); k < ptr->getNStates(); k++)
+            kv[(getDerivName(k) + "_" + name).c_str()] = xdotvec.at(dx_iter++);
+        for (size_t k(0); k < ptr->getConstraints()->size(); k++)
+            kv[(getPathConstraintName(k)  + "_" + name).c_str()] =
+                    pvec.at(p_iter++);
+    }
+    return kv;
 }
-/**
- * @todo Update num_segements and order
- */
+
+// API
+
+void eDymos::setup() {
+    this->setAlg();
+    this->setProb();
+
+    // Call "setup" after changing the _prob variable
+    // OpenMDAO: MPI processors allocated, model hierarchy is created, etc.
+    this->_alg.attr("setup")("check"_a = false);
+
+    this->setGuess();
+
+    // Set mesh refinement tolerance
+    _alg.attr("model").attr("traj").attr("phases").attr("phase0")
+                   .attr("set_refine_options")("refine"_a = mesh_refine_,
+                           "tol"_a = mesh_tol_);
+}
+
+void eDymos::solve() {
+    _dm.attr("run_problem")(_alg, "refine"_a = mesh_refine_,
+            "refine_iteration_limit"_a = max_mesh_iter_);
+
+    // Get score from Dymos
+    py::list jval_list = _alg.attr("get_val")(
+            "traj.phase0.timeseries.states:jval");
+    double j_tf = (*(jval_list.end()-1)).cast<double>();
+    this->setScore(j_tf);
+
+    // Get state and control trajectories from Dymos
+    this->getTraj();
+
+    /*  Plot results
+    py::object plt = py::module::import("matplotlib.pyplot");
+    py::object plotsol = py::module::import(
+                "dymos.examples.plotting").attr("plot_results");
+    py::object exp_out = _sol.attr("simulate")();
+    py::list li;
+    li.append(py::make_tuple("traj.phase0.timeseries.time",
+            "traj.phase0.timeseries.states:x0", "t", "x0"));
+    li.append(py::make_tuple("traj.phase0.timeseries.time",
+                "traj.phase0.timeseries.controls:u0", "t", "x1"));
+    li.append(py::make_tuple("traj.phase0.timeseries.time",
+                "traj.phase0.timeseries.p0", "t", "p0"));
+    plotsol(li,
+            "title"_a = "Path0",
+            "p_sol"_a = _alg,
+            "p_sim"_a = exp_out);
+    plt.attr("show")();
+    */
+}
+
+void eDymos::debug() {
+    _alg.attr("set_solver_print")("level"_a = 2);
+    if (_alg.attr("driver").attr("options")["optimizer"].cast<std::string>()
+            == "SNOPT")
+        _alg.attr("driver").attr("opt_settings")["iSumm"] = 6;
+}
+
+void eDymos::close() {}
+
+// Private functions
+
+void eDymos::setAlg() {
+    _alg.attr("driver") =  _om.attr("pyOptSparseDriver")();
+    _alg.attr("driver").attr("options")["optimizer"] = getOptimizer().c_str();
+    if (_alg.attr("driver").attr("options")["optimizer"].cast<std::string>()
+                == "SNOPT") {
+        _alg.attr("driver").attr("options")["user_teriminate_signal"] =
+                    nullptr;
+        _alg.attr("driver").attr(
+            "opt_settings")["Major iterations limit"] = getMaxIter();
+        _alg.attr("driver").attr(
+            "opt_settings")["Minor iterations limit"] = getMaxIter();
+    } else if (_alg.attr("driver")
+            .attr("options")["optimizer"].cast<std::string>() == "IPOPT")  {
+        _alg.attr("driver").attr(
+            "opt_settings")["max_iter"] = getMaxIter();
+    }
+    if (with_coloring_)
+        _alg.attr("driver").attr("declare_coloring")();
+}
+
 void eDymos::setProb() {
     // Define the OpenMDAO problem
     py::object scope = py::module::import("__main__").attr("__dict__");
+
+    // Try to set the number of segments based on the number of time steps
+    this->num_segments_ = (this->num_segments_ > (this->getNSteps()+1)/order_) ?
+            this->num_segments_ : (this->getNSteps()+1)/order_;
+
     _prob = _sol.attr("add_phase")("phase0", _dm.attr("Phase")(
                 "ode_class"_a = py::eval("eDymosODE", scope),
+                        //  py::module::import("edymosode").attr("eDymosODE"),
                 "ode_init_kwargs"_a =
                 py::dict(  // @suppress("Symbol is not resolved")
                     "edymos"_a = reinterpret_cast<void*>(this),
@@ -406,16 +436,24 @@ void eDymos::setProb() {
                     "num_path_constraints"_a =
                             static_cast<int>(this->getConstraints()->size())),
             "transcription"_a = _dm.attr("GaussLobatto")(
-                    "num_segments"_a = this->getNSteps(),
-                    "order"_a = 3)));
+                    "num_segments"_a = num_segments_,
+                    "order"_a = order_,
+                    "compressed"_a = compressed_)));
 
     // Set the time variable
-    _prob.attr("set_time_options")("fix_initial"_a = true, "units"_a = nullptr,
-            "duration_val"_a = getDt() * getNSteps(), "targets"_a = "t");
+    double tf = getDt() * getNSteps();
+    _prob.attr("set_time_options")(
+            "fix_initial"_a = true, "fix_duration"_a = true,
+            // "initial_bounds"_a = py::make_tuple(0., 0.),
+            // "duration_bounds"_a = py::make_tuple(tf, tf),
+            "units"_a = nullptr, "targets"_a = "t");
 
     // Set the objective variable as a state
-    _prob.attr("add_state")("J", "fix_initial"_a = false, "fix_final"_a = false,
-            "rate_source"_a = "Jdot", "units"_a = nullptr);
+    _prob.attr("add_state")("jval", "rate_source"_a = "jdot",
+        "fix_initial"_a = false, "fix_final"_a = false, "units"_a = nullptr,
+        "targets"_a = "jval");
+    _prob.attr("add_boundary_constraint")("jval",
+                    "loc"_a = "initial", "equals"_a = 0.);
 
     // Set the states
     state_t::iterator it_xlo = this->getXlower().begin();
@@ -424,41 +462,51 @@ void eDymos::setProb() {
     state_t::iterator it_xf = this->getXf().begin();
     state_t::iterator it_xtol = this->getXtol().begin();
     for (size_t j(0); j < this->getNStates(); j++)  {
-        double lo = *(it_xf) - *(it_xtol);
-        double up = *(it_xf++) + *(it_xtol++);
         _prob.attr("add_state")(getStateName(j).c_str(),
-                "rate_source"_a = getDerivName(j),
-                "units"_a = nullptr,
-                "lower"_a = *(it_xlo++),
-                "upper"_a = *(it_xup++),
-                "fix_initial"_a = true,
-                "fix_final"_a = true,
-                "solve_segments"_a = false,
+                "rate_source"_a = getDerivName(j).c_str(),
+                "lower"_a = *(it_xlo),
+                "upper"_a = *(it_xup),
+                "fix_initial"_a = false,
+                "fix_final"_a = false,
                 "targets"_a = getStateName(j).c_str());
         _prob.attr("add_boundary_constraint")(getStateName(j).c_str(),
-                "loc"_a = "initial", "equals"_a = *(it_x0++));
+                "loc"_a = "initial", "equals"_a = *(it_x0));
         _prob.attr("add_boundary_constraint")(getStateName(j).c_str(),
-                "loc"_a = "final", "lower"_a = lo, "upper"_a = up);
+                        "loc"_a = "final",
+                        "upper"_a = *(it_xf) + *(it_xtol),
+                        "lower"_a = *(it_xf) - *(it_xtol));
+        it_x0++; it_xf++; it_xtol++; it_xlo++; it_xup++;
     }
-
 
     // Set the controls
     state_t::iterator it_ulo = this->getUlower().begin();
     state_t::iterator it_uup = this->getUupper().begin();
-    for (size_t j(0); j < this->getNControls(); j++)
+    for (size_t j(0); j < this->getNControls(); j++) {
         _prob.attr("add_control")(getControlName(j).c_str(),
-                "continuity"_a = false,
-                "rate_continuity"_a = false,
-                "units"_a = nullptr,
+                "continuity"_a = true,
+                "rate_continuity"_a = true,
                 "lower"_a = *(it_ulo++),
                 "upper"_a = *(it_uup++),
                 "targets"_a = getControlName(j).c_str());
+       _prob.attr("add_timeseries_output")("name"_a = getControlName(j).c_str(),
+               "units"_a = nullptr);
+    }
 
-    // Add objective initial value
-    _prob.attr("add_boundary_constraint")("J", "loc"_a = "initial",
-                "equals"_a = 0.);
+    // Set the path constraints
+    for (size_t j(0); j < this->getConstraints()->size(); j++) {
+        _prob.attr("add_path_constraint")(
+                "name"_a = getPathConstraintName(j).c_str(),
+                "upper"_a = 0.,
+                "lower"_a = nullptr,
+                "units"_a = nullptr);
+        _prob.attr("add_timeseries_output")(
+                "name"_a = getPathConstraintName(j).c_str(),
+                "units"_a = nullptr);
+    }
+
     // Set objective variable that will be minimized
-    _prob.attr("add_objective")("J", "loc"_a = "final");
+    _prob.attr("add_objective")("jval", "loc"_a = "final",
+            "scaler"_a = (this->isMaximized() ? -1 : 1));
 }
 
 void eDymos::setGuess() {
@@ -468,20 +516,31 @@ void eDymos::setGuess() {
     _alg["traj.phase0.t_initial"] = 0.;
     _alg["traj.phase0.t_duration"] = getDt() * getNSteps();
 
-    _alg["traj.phase0.states:J"] = _prob.attr("interpolate")(
-            "ys"_a = py::make_tuple(0.0, 0.0), "nodes"_a = "state_input");
+    _alg["traj.phase0.states:jval"] = _prob.attr("interpolate")(
+            "xs"_a = py::make_tuple(0., getDt() * getNSteps()),
+            "ys"_a = py::make_tuple(0.0, 1.0), "nodes"_a = "state_input");
 
-    for (size_t j(0); j < this->getNStates(); j++)
-        _alg[(xprefix + getStateName(j)).c_str()] = _prob.attr("interpolate")(
-                "ys"_a = py::make_tuple(0.0, 0.0), "nodes"_a = "state_input");
-
+    state_t::iterator it_x0 = this->getX0().begin();
+    state_t::iterator it_xf = this->getXf().begin();
+    for (size_t j(0); j < this->getNStates(); j++) {
+        _alg[(xprefix + getStateName(j)).c_str()] =
+                _prob.attr("interpolate")(
+                "xs"_a = py::make_tuple(0., getDt() * getNSteps()),
+                "ys"_a = py::make_tuple(*(it_x0++), *(it_xf++)),
+                "nodes"_a = "state_input");
+    }
+    state_t::iterator it_ulo = this->getUlower().begin();
+    state_t::iterator it_uup = this->getUupper().begin();
     for (size_t j(0); j < this->getNControls(); j++)
-        _alg[(uprefix + getControlName(j)).c_str()] = _prob.attr("interpolate")(
-                "ys"_a = py::make_tuple(0.0, 0.0), "nodes"_a = "control_input");
+        _alg[(uprefix + getControlName(j)).c_str()] =
+                _prob.attr("interpolate")(
+                        "xs"_a = py::make_tuple(0., getDt() * getNSteps()),
+                        "ys"_a = py::make_tuple(*(it_uup++), *(it_ulo++)),
+                        "nodes"_a = "control_input");
 }
 
 void eDymos::getTraj() {
-    py::list tval = _prob.attr("get_val")("traj.phase0.timeseries.time");
+    py::list tvals = _alg.attr("get_val")("traj.phase0.timeseries.time");
 
     traj_t* xtraj = this->getXtraj();
     xtraj->clear();
@@ -489,24 +548,34 @@ void eDymos::getTraj() {
     traj_t* utraj = this->getUtraj();
     utraj->clear();
 
-    std::string xprefix = "traj.phase0.timeseires.states:";
-    std::string uprefix = "traj.phase0.timeseires.states:";
-    for (size_t i(0); i < this->getNSteps(); i++) {
-        double t = 0.0;  // *(tval.begin() + i)).cast<double>();
+    std::string xprefix = "traj.phase0.timeseries.states:";
+    std::string uprefix = "traj.phase0.timeseries.controls:";
+    size_t i(0);
+    for (auto tval : tvals) {
+        double t = tval.cast<double>();
         state_t x, u;
         for (size_t j(0); j < this->getNStates(); j++) {
-            py::list xvals = _prob.attr("get_val")(
+            py::list xvals = _alg.attr("get_val")(
                     (xprefix + getStateName(j)).c_str());
             x.push_back(xvals[i].cast<double>());
         }
         xtraj->push_back(traj_elem_t(t, x));
 
         for (size_t j(0); j < this->getNControls(); j++) {
-            py::list uvals = _prob.attr("get_val")(uprefix + getControlName(j));
+            py::list uvals = _alg.attr("get_val")(uprefix + getControlName(j));
             u.push_back(uvals[i].cast<double>());
         }
         utraj->push_back(traj_elem_t(t, u));
+        i++;
     }
+}
+
+std::string eDymos::getOptimizer() const {
+    return optimizer_;
+}
+
+void eDymos::setOptimizer(std::string optimizer) {
+    optimizer_ = optimizer;
 }
 
 void eDymos::addODE() {
@@ -537,28 +606,31 @@ class eDymosODE(om.ExplicitComponent):
         npc = self.options['num_path_constraints']
         r = c = np.arange(nn)
         
-        self.add_input('t', val=np.zeros(nn), desc='time', units=None)
-        self.add_output('Jdot', val=np.zeros(nn), desc='derivative of objective',
+        self.add_input('t', val=np.ones(nn), desc='time', units=None)
+        self.add_input('jval', val=np.ones(nn), desc='objective', units=None)
+        self.add_output('jdot', val=np.ones(nn), desc='derivative of objective',
                         units=None)
-               
+        self.declare_partials(of='jdot', wrt='t', rows=r, cols=c, val=0.0)
+        self.declare_partials(of='jdot', wrt='jval', rows=r, cols=c, val=0.0)
+
         for i in range(ns):
             name = 'x' + str(i)
             descr = 'state: ' + name
-            self.add_input(name, val=np.zeros(nn), desc=descr, units=None)
-            self.declare_partials(of='Jdot', wrt=name,
-                                  rows=r, cols=c)
+            self.add_input(name, val=np.ones(nn), desc=descr, units=None)
+            self.declare_partials(of='jdot', wrt=name, rows=r, cols=c)
             
         for i in range(nc):
             name = 'u' + str(i)
             descr = 'control: ' + name
-            self.add_input(name, val=np.zeros(nn), desc=descr, units=None)
-            self.declare_partials(of='Jdot', wrt=name,
-                                  rows=r, cols=c)
+            self.add_input(name, val=np.ones(nn), desc=descr, units=None)
+            self.declare_partials(of='jdot', wrt=name, rows=r, cols=c)
             
         for i in range(ns):           
             dname = 'x' + str(i) + 'dot'
-            self.add_output(dname, val=np.zeros(nn),
+            self.add_output(dname, val=np.ones(nn),
                         desc='output', units=None)
+            self.declare_partials(of=dname, wrt='t', rows=r, cols=c, val=0.0)
+            self.declare_partials(of=dname, wrt='jval', rows=r, cols=c, val=0.0)
             for j in range(ns):
                 name = 'x' + str(j)
                 self.declare_partials(of=dname, wrt=name,
@@ -571,8 +643,10 @@ class eDymosODE(om.ExplicitComponent):
                         
         for i in range(npc):
             pname = 'p' + str(i)
-            self.add_output(pname, val=np.zeros(nn),
+            self.add_output(pname, val=np.ones(nn),
                         desc='output', units=None)
+            self.declare_partials(of=pname, wrt='t', rows=r, cols=c, val=0.0)
+            self.declare_partials(of=pname, wrt='jval', rows=r, cols=c, val=0.0)
             for j in range(ns):
                 name = 'x' + str(j)
                 self.declare_partials(of=pname, wrt=name,
@@ -588,23 +662,46 @@ class eDymosODE(om.ExplicitComponent):
         ns = self.options['num_states']
         nc = self.options['num_controls']
         npc = self.options['num_path_constraints']
-        data = {'t':inputs['t']}
+        data = {'t':inputs['x0']}
         for i in range(ns):
             name = 'x' + str(i)
             data[name] = inputs[name]
         for i in range(nc):
             name = 'u' + str(i)
             data[name] = inputs[name]
-        
+
         result = ed.compute(edymos, data)
         
-        outputs['Jdot'] = result['Jdot']
+        outputs['jdot'] = result['jdot']
         for i in range(ns):
             name = 'x' + str(i) + 'dot'
             outputs[name] = result[name]
         for i in range(npc):
             name = 'p' + str(i)
             outputs[name] = result[name]
+            
+                     
+    def compute(self, inputs, outputs):
+        edymos = self.options['edymos']
+        ns = self.options['num_states']
+        nc = self.options['num_controls']
+        npc = self.options['num_path_constraints']
+        data = {'t':inputs['t']}
+        for i in range(ns):
+            xname = 'x%i'%i
+            data[xname] = inputs[xname]
+        for i in range(nc):
+            uname = 'u%i'%i
+            data[uname] = inputs[uname]
+
+        result = ed.compute(edymos, data)
+                
+        for i in range(ns):
+            dname = 'x%idot'%i
+            outputs[dname] = result[dname]
+        for i in range(npc):
+            pname = 'p%i'%i
+            outputs[pname] = result[pname]
             
                      
     def compute_partials(self, inputs, partials):
@@ -614,33 +711,123 @@ class eDymosODE(om.ExplicitComponent):
         npc = self.options['num_path_constraints']
         data = {'t':inputs['t']}
         for i in range(ns):
-            name = 'x' + str(i)
-            data[name] = inputs[name]
+            xname = 'x%i'%i
+            data[xname] = inputs[xname]
         for i in range(nc):
-            name = 'u' + str(i)
-            data[name] = inputs[name]
+            uname = 'u%i'%i
+            data[uname] = inputs[uname]
+
+        result_partials = ed.compute_partials(edymos, data)
         
-        result = ed.compute_partials(edymos, data)
-                
         for i in range(ns):
-            name = 'x' + str(i)
-            partials['Jdot', name] = result['Jdot_' + name]
+            xname = 'x%i'%i
+            partials['jdot', xname] = result_partials['jdot_' + xname]
             for j in range(ns):
-                dname = 'x' + str(j) + 'dot'
-                partials[dname, name] = result[dname + '_'+ name]
+                dname = 'x%idot'%j
+                partials[dname, xname] = result_partials[dname + '_'+ xname]
             for j in range(npc):
-                dname = 'p' + str(j)
-                partials[dname, name] = result[dname + '_'+ name]
+                pname = 'p%i'%j
+                partials[pname, xname] = result_partials[pname + '_'+ xname]
         for i in range(nc):
-            name = 'u' + str(i)
-            partials['Jdot', name] = result['Jdot' + '_'+ name]
+            uname = 'u%i'%i
+            partials['jdot', uname] = result_partials['jdot_'+ uname]
             for j in range(ns):
-                dname = 'x' + str(j) + 'dot'
-                partials[dname, name] = result[dname + '_'+ name]
+                dname = 'x%idot'%j
+                partials[dname, uname] = result_partials[dname + '_'+ uname]
             for j in range(npc):
-                dname = 'p' + str(j)
-                partials[dname, name] = result[dname + '_'+ name]
+                pname = 'p%i'%j
+                partials[pname, uname] = result_partials[pname + '_'+ uname]
             )", scope);
+}
+
+// Getters and Setters
+
+const pybind11::object& eDymos::getAlg() const {
+    return _alg;
+}
+
+const pybind11::object& eDymos::getDm() const {
+    return _dm;
+}
+
+const pybind11::object& eDymos::getNp() const {
+    return _np;
+}
+
+const pybind11::object& eDymos::getOm() const {
+    return _om;
+}
+
+const pybind11::object& eDymos::getProb() const {
+    return _prob;
+}
+
+const pybind11::object& eDymos::getSol() const {
+    return _sol;
+}
+
+bool eDymos::isCompressed() const {
+    return compressed_;
+}
+
+void eDymos::setCompressed(const bool compressed) {
+    compressed_ = compressed;
+}
+
+bool eDymos::isWithColoring() const {
+    return with_coloring_;
+}
+
+void eDymos::setWithColoring(const bool withColoring) {
+    with_coloring_ = withColoring;
+}
+
+int eDymos::getMaxMeshIter() const {
+    return max_mesh_iter_;
+}
+
+void eDymos::setMaxMeshIter(const int maxMeshIter) {
+    max_mesh_iter_ = maxMeshIter;
+}
+
+bool eDymos::isMeshRefine() const {
+    return mesh_refine_;
+}
+
+void eDymos::setMeshRefine(const bool meshRefine) {
+    mesh_refine_ = meshRefine;
+}
+
+double eDymos::getMeshTol() const {
+    return mesh_tol_;
+}
+
+void eDymos::setMeshTol(const double meshTol) {
+    mesh_tol_ = meshTol;
+}
+
+int eDymos::getNumSegments() const {
+    return num_segments_;
+}
+
+void eDymos::setNumSegments(const int numSegments) {
+    num_segments_ = numSegments;
+}
+
+int eDymos::getOrder() const {
+    return order_;
+}
+
+void eDymos::setOrder(const int order) {
+    order_ = order;
+}
+
+int eDymos::getMaxIter() const {
+    return max_iter_;
+}
+
+void eDymos::setMaxIter(const int maxIter) {
+    max_iter_ = maxIter;
 }
 
 } /* namespace ETOL */

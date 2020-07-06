@@ -210,7 +210,7 @@ void eGurobi::errorHandler() {
 // Private functions
 /**
  * State variables names are x_time#_state#. Control variable names are
- * u_time#_state#. Path constraint variable names are <varName>_time#
+ * u_time#_state#. Path constraint variable names are varName_time#
  */
 void eGurobi::createVars() {
     state_t::iterator l_it, u_it;

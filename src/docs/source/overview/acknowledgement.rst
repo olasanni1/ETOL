@@ -10,6 +10,7 @@ Contributors
 - Olatunde Sanni
 - Thanakorn Khamvilai
 - Emre Yilmaz
+- Mark Kotwicz
 
 Maintenance
 -----------

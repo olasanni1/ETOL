@@ -6,7 +6,7 @@ Ubuntu Setup
 ETOL was initially developed on an Ubuntu 18.04 system. The following command installs its build tools ::
 
    sudo apt-get update
-   sudo apt-get install gcc g++ gfortran git patch wget pkg-config liblapack-dev
+   sudo apt-get install gcc g++ gfortran git patch wget pkg-config
 
 
 Although ETOL was initially built on Ubuntu 18.04, it was developed with cross-platform support in-mind. Consequently, `CMake`_ is used as the build generator.

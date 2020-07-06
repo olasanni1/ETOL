@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>eGurobi Setup &mdash; ETOL  documentation</title>
+  <title>eDymos Setup &mdash; ETOL  documentation</title>
   
 
   
@@ -36,8 +36,8 @@
   <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="eOMPL Setup" href="ompl.html" />
-    <link rel="prev" title="eGLPK Setup" href="glpk.html" /> 
+    <link rel="next" title="Build" href="../overview/build.html" />
+    <link rel="prev" title="ePSOPT Setup" href="psopt.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -87,13 +87,10 @@
 <li class="toctree-l2"><a class="reference internal" href="overview.html">System Requirements</a></li>
 <li class="toctree-l2 current"><a class="reference internal" href="eSolver.html">Extensible Solvers</a><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="glpk.html">eGLPK Setup</a></li>
-<li class="toctree-l3 current"><a class="current reference internal" href="#">eGurobi Setup</a><ul>
-<li class="toctree-l4"><a class="reference internal" href="#windows-setup">Windows Setup</a></li>
-</ul>
-</li>
+<li class="toctree-l3"><a class="reference internal" href="gurobi.html">eGurobi Setup</a></li>
 <li class="toctree-l3"><a class="reference internal" href="ompl.html">eOMPL Setup</a></li>
 <li class="toctree-l3"><a class="reference internal" href="psopt.html">ePSOPT Setup</a></li>
-<li class="toctree-l3"><a class="reference internal" href="dymos.html">eDymos Setup</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">eDymos Setup</a></li>
 </ul>
 </li>
 </ul>
@@ -150,13 +147,13 @@
         
           <li><a href="eSolver.html">Extensible Solvers</a> &raquo;</li>
         
-      <li>eGurobi Setup</li>
+      <li>eDymos Setup</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="../_sources/setup/gurobi.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../_sources/setup/dymos.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -169,19 +166,46 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="egurobi-setup">
-<span id="gurobi"></span><h1>eGurobi Setup<a class="headerlink" href="#egurobi-setup" title="Permalink to this headline">¶</a></h1>
-<p><a class="reference external" href="https://www.gurobi.com/">Gurobi Optimizer</a> is a commercial software package that can solve many types of mathematical programming problems. eGurobi provides an interface between ETOL and Gurobi for the purpose of solving a VGP.</p>
-<div class="section" id="windows-setup">
-<h2>Windows Setup<a class="headerlink" href="#windows-setup" title="Permalink to this headline">¶</a></h2>
-<p>After running the Gurobi installer, a C++ API interface needs to be built with the MSYS2 GNU g++ compiler.</p>
-<ol class="arabic simple">
-<li><p>If MSYS2 is not installed, complete the instructions in the <a class="reference internal" href="windows.html#windows"><span class="std std-ref">Windows Setup</span></a> section.</p></li>
-<li><p>Create libgurobi_c++.a by using the solution at <a class="reference external" href="https://www.quora.com/How-can-I-use-Gurobi-in-Windows-with-a-G-compiler">https://www.quora.com/How-can-I-use-Gurobi-in-Windows-with-a-G-compiler</a></p></li>
-<li><p>Copy the libgurobi_c++.a file to the Gurobi “lib” directory.</p></li>
-</ol>
-<p>After installing Gurobi, the ETOL CMake project attempts to find Gurobi in the default install paths. If Gurobi is not in the default install path, CMake is configured to search the path that is specified by the environment variable GUROBI_HOME. If cmake still does not find the package, then the FindGUROBI.cmake file may require modification. For example, a modification may be necessary if the name of the library in FindGUROBI.cmake is different from the name of the installed library.</p>
+  <div class="section" id="edymos-setup">
+<span id="dymos-setup"></span><h1>eDymos Setup<a class="headerlink" href="#edymos-setup" title="Permalink to this headline">¶</a></h1>
+<p><a class="reference external" href="https://openmdao.github.io/dymos/">Dymos</a> solves optimal control problems. It is an open-source Python package and it was created by the National Aeronautics and Space Administration (NASA).</p>
+<p>The following instructions provides Ubuntu and Windows instructions. The instructions enumerated with “a.” are for Ubuntu and “b.” are for Windows. The Windows instruction in the <a class="reference internal" href="windows.html#windows"><span class="std std-ref">Windows Setup</span></a> section should be completed before completing these following setup instructions.</p>
+<ol class="arabic">
+<li><p>Install <a class="reference external" href="https://github.com/OpenMDAO/OpenMDAO">OpenMDAO</a>.</p>
+<ol class="loweralpha">
+<li><p>On Ubuntu, OpenMDAO can be installed with pip</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">openmdao</span><span class="p">[</span><span class="nb">all</span><span class="p">]</span>
+</pre></div>
 </div>
+</li>
+<li><p>Whereas on Windows, OpenMDAO can be installed with pacman</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mingw</span><span class="o">-</span><span class="n">w64</span><span class="o">-</span><span class="n">x86_64</span><span class="o">-</span><span class="n">python</span><span class="o">-</span><span class="n">openmdao</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</li>
+<li><p>Install Dymos. For both Ubuntu and Windows, Dymos can be installed with pip</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">git</span><span class="o">+</span><span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">github</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">OpenMDAO</span><span class="o">/</span><span class="n">dymos</span><span class="o">.</span><span class="n">git</span>
+</pre></div>
+</div>
+</li>
+<li><p>Since Dymos is a Python package and ETOL is a C++ library, eDymos uses <a class="reference external" href="https://pybind11.readthedocs.io/en/stable/intro.html">Pybind11</a> to seamlessly integrate Python and C++ code.</p>
+<ol class="loweralpha">
+<li><p>On Ubuntu, Pybind11 is installed with pip</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">pybind11</span>
+</pre></div>
+</div>
+</li>
+<li><p>Whereas on Windows, pacman is used to install Pybind11</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pacman</span> <span class="o">-</span><span class="n">S</span> <span class="n">mingw</span><span class="o">-</span><span class="n">w64</span><span class="o">-</span><span class="n">x86_64</span><span class="o">-</span><span class="n">pybind11</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</li>
+<li><p>Install pyOptSparse by following the instructions in the <a class="reference external" href="https://mdolab-pyoptsparse.readthedocs-hosted.com/en/latest/install.html">pyOptSparse documentation</a>. These instructions also explain how to use pyOptSparse with proprietary optimizers such as SNOPT.</p></li>
+</ol>
 </div>
 
 
@@ -192,10 +216,10 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="ompl.html" class="btn btn-neutral float-right" title="eOMPL Setup" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="../overview/build.html" class="btn btn-neutral float-right" title="Build" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="glpk.html" class="btn btn-neutral float-left" title="eGLPK Setup" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="psopt.html" class="btn btn-neutral float-left" title="ePSOPT Setup" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

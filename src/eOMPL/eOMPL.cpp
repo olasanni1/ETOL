@@ -165,8 +165,7 @@ namespace ETOL {
         this->planTime_ = ompl::time::seconds(ompl::time::now() - start);
         if (this->last_status_) {
             OMPL_INFORM("Solution found in %f seconds", this->planTime_);
-            this->setScore(pdef_->getSolutionPath()->cost(
-                    this->pdef_->getOptimizationObjective()).value());
+            this->setScore(pdef_->getSolutionPath()->length());
             this->getTraj();
         } else {
             OMPL_INFORM("No solution found after %f seconds", this->planTime_);

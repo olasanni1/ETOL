@@ -9,3 +9,4 @@ Extensible Solvers
    gurobi.rst
    ompl.rst
    psopt.rst
+   dymos.rst
