@@ -16,11 +16,10 @@
 
 #include <pybind11/embed.h>
 #include <pybind11/pybind11.h>
-#include <ETOL/eDymos_Types.hpp>
+#include <string>
 #include <ETOL/TrajectoryOptimizer.hpp>
 
 namespace ETOL {
-
 
 class __attribute__((visibility("default")))
 eDymos : public pybind11::scoped_interpreter,
@@ -28,7 +27,7 @@ eDymos : public pybind11::scoped_interpreter,
  public:
     eDymos();
 
-    virtual ~eDymos(){};
+    virtual ~eDymos() {}
 
     /**
      * @brief Constructs an optimization problem from settings
@@ -50,18 +49,36 @@ eDymos : public pybind11::scoped_interpreter,
      */
     void close();
 
-    // Getters and Setters
-
-
     // Static Functions
+    static std::string getStateName(const size_t& sIdx);
+
+    static std::string getDerivName(const size_t& sIdx);
+
+    static std::string getControlName(const size_t& sIdx);
+
+    static std::string getPathConstraintName(const size_t& pIdx);
+
+    static pybind11::dict dymosCompute(void*, pybind11::dict);
+
+    static pybind11::dict dymosComputePartials(void*, pybind11::dict);
 
  protected:
+    pybind11::object _np;               /**< Python numpy import */
+    pybind11::object _om;               /**< Python openmdao.api import */
+    pybind11::object _dm;               /**< Python dymos import */
+    pybind11::object _prob;             /**< Dymos problem parameters */
+    pybind11::object _alg;              /**< Dymos algorithm parameters */
+    pybind11::object _sol;              /**< Dymos aolution set */
 
  private:
+    void setAlg();
+    void setProb();
+    void setSol();
+    void setGuess();
     void getTraj();
-
+    void addODE();
 };
 
 } /* namespace ETOL */
 
-#endif /* INCLUDE_ETOL_EDYMOS_HPP_ */
+#endif  // INCLUDE_ETOL_EDYMOS_HPP_
