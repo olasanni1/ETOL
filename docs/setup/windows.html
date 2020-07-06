@@ -165,16 +165,19 @@
             
   <div class="section" id="windows-setup">
 <span id="windows"></span><h1>Windows Setup<a class="headerlink" href="#windows-setup" title="Permalink to this headline">¶</a></h1>
-<p>ETOL was originally developed in Ubuntu 18.04. However, with <a class="reference external" href="https://www.msys2.org/">MSYS2</a>, ETOL and its prerequisite software packages can be installed on Windows because MSYS2 provides a Unix-like environment for Windows.</p>
-<p>The MSYS2 shell uses a package manager called pacman. This <a class="reference external" href="https://packages.msys2.org/search">MSYS2 package manager</a> is able to install the prerequisite software packages for ETOL.  First install, the default build tool</p>
+<ol class="arabic">
+<li><p>ETOL was originally developed in Ubuntu 18.04. However, with <a class="reference external" href="https://www.msys2.org/">MSYS2</a>, ETOL and its prerequisite software packages can be installed on Windows because MSYS2 provides a Unix-like environment for Windows. Follow the MSYS2 installation instructions that are provided at <a class="reference external" href="https://www.msys2.org/">https://www.msys2.org/</a></p></li>
+<li><p>The MSYS2 shell uses a package manager called pacman. This <a class="reference external" href="https://packages.msys2.org/search">MSYS2 package manager</a> is able to install the prerequisite software packages for ETOL. Use pacman to install the default build tools</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pacman</span> <span class="o">-</span><span class="n">S</span> <span class="n">binutils</span> <span class="n">diffutils</span> <span class="n">git</span> <span class="n">grep</span> <span class="n">make</span> <span class="n">patch</span> <span class="n">pkg</span><span class="o">-</span><span class="n">config</span>
 </pre></div>
 </div>
-<p>The mingw64 build tools should be installed with</p>
+</li>
+<li><p>Install the mingw64 build tools by using the following command and choose select all, when prompted</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pacman</span> <span class="o">-</span><span class="n">S</span> <span class="n">mingw</span><span class="o">-</span><span class="n">w64</span><span class="o">-</span><span class="n">x86_64</span><span class="o">-</span><span class="n">toolchain</span>
 </pre></div>
 </div>
-<p>When prompted, select all. After the install completes, the following command block installs additional dependencies</p>
+</li>
+<li><p>After the install completes, the following command block installs additional dependencies</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pacman</span> <span class="o">-</span><span class="n">S</span> <span class="n">mingw</span><span class="o">-</span><span class="n">w64</span><span class="o">-</span><span class="n">x86_64</span><span class="o">-</span><span class="n">libtool</span> <span class="n">mingw</span><span class="o">-</span><span class="n">w64</span><span class="o">-</span><span class="n">x86_64</span><span class="o">-</span><span class="n">cmake</span> \
 <span class="n">mingw</span><span class="o">-</span><span class="n">w64</span><span class="o">-</span><span class="n">x86_64</span><span class="o">-</span><span class="n">dlfcn</span> <span class="n">mingw</span><span class="o">-</span><span class="n">w64</span><span class="o">-</span><span class="n">x86_64</span><span class="o">-</span><span class="n">f2c</span> <span class="n">mingw</span><span class="o">-</span><span class="n">w64</span><span class="o">-</span><span class="n">x86_64</span><span class="o">-</span><span class="n">python</span> \
 <span class="n">mingw</span><span class="o">-</span><span class="n">w64</span><span class="o">-</span><span class="n">x86_64</span><span class="o">-</span><span class="n">python</span><span class="o">-</span><span class="n">pip</span> <span class="n">mingw</span><span class="o">-</span><span class="n">w64</span><span class="o">-</span><span class="n">x86_64</span><span class="o">-</span><span class="n">python</span><span class="o">-</span><span class="n">numpy</span> \
@@ -188,17 +191,34 @@
 <span class="n">mingw</span><span class="o">-</span><span class="n">w64</span><span class="o">-</span><span class="n">x86_64</span><span class="o">-</span><span class="n">graphviz</span> <span class="n">mingw</span><span class="o">-</span><span class="n">w64</span><span class="o">-</span><span class="n">x86_64</span><span class="o">-</span><span class="n">cgal</span> <span class="n">mingw</span><span class="o">-</span><span class="n">w64</span><span class="o">-</span><span class="n">x86_64</span><span class="o">-</span><span class="n">re2</span>
 </pre></div>
 </div>
-<p>Note that the aforementioned packages were selected for a 64-bit operating system. The package name may need to change for a 32-bit system. After installing the mingw64 packages, a /mingw64/bin folder will exist and this path is relative to MSYS2 installation directory. This folder should be added to the user’s PATH environment variable. Although the MSYS2 Shell uses the system’s search path, its search can be modified by the /home/&lt;user&gt;/.bashrc file. For a 64-bit system, the following line was added to the end of the .bashrc file.</p>
+</li>
+<li><p>Note that the aforementioned packages were selected for a 64-bit operating system. The package name may need to change for a 32-bit system. After installing the mingw64 packages, a /mingw64/bin folder will exist and this path is relative to MSYS2 installation directory. This folder should be added to the user’s PATH environment variable. Although the MSYS2 Shell uses the system’s search path, its search can be modified by the /home/&lt;user&gt;/.bashrc file. For a 64-bit system, the following line was added to the end of the .bashrc file.</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span>export PATH=/mingw64/bin:${PATH}
 export LD_LIBRARY_PATH=/mingw64/lib:${LD_LIBRARY_PATH}
 export CPATH=/mingw64/include:${CPATH}
 </pre></div>
 </div>
-<p>Since ETOL relies on gnuplot-iostream, which is not available through pacman, the <a class="reference external" href="https://github.com/dstahlke/gnuplot-iostream/blob/master/gnuplot-iostream.h">gnuplot-iostream.h</a> needs to be copied into the /mingw64/include folder.</p>
-<p>Since the Python package, sphinx-git, is not available through pacman, pip should be used to install it</p>
+</li>
+<li><p>Since ETOL relies on gnuplot-iostream, which is not available through pacman, the <a class="reference external" href="https://github.com/dstahlke/gnuplot-iostream/blob/master/gnuplot-iostream.h">gnuplot-iostream.h</a> needs to be copied into the /mingw64/include folder.</p>
+<ol class="loweralpha">
+<li><p>In the MSYS2 shell, navigate to the mingw64/include folder</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">cd</span> <span class="o">/</span><span class="n">mingw64</span><span class="o">/</span><span class="n">include</span>
+</pre></div>
+</div>
+</li>
+<li><p>Download the gnuplot-iostream.</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">wget</span> <span class="n">https</span><span class="p">:</span><span class="o">//</span><span class="n">raw</span><span class="o">.</span><span class="n">githubusercontent</span><span class="o">.</span><span class="n">com</span><span class="o">/</span><span class="n">dstahlke</span><span class="o">/</span><span class="n">gnuplot</span><span class="o">-</span><span class="n">iostream</span><span class="o">/</span><span class="n">master</span><span class="o">/</span><span class="n">gnuplot</span><span class="o">-</span><span class="n">iostream</span><span class="o">.</span><span class="n">h</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</li>
+<li><p>Since the Python package sphinx-git is not available through pacman, use pip to install it</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">sphinx</span><span class="o">-</span><span class="n">git</span>
 </pre></div>
 </div>
+</li>
+</ol>
 </div>
 
 
