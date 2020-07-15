@@ -15,7 +15,7 @@ The following instructions provides Ubuntu and Windows instructions. The instruc
 
    #. Whereas on Windows, OpenMDAO can be installed with pacman ::
 
-        mingw-w64-x86_64-python-openmdao
+        pacman -S mingw-w64-x86_64-python-openmdao
 
 #. Install Dymos. For both Ubuntu and Windows, Dymos can be installed with pip ::
 
