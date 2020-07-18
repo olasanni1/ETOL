@@ -10,8 +10,10 @@ endif()
 find_path(
   IPOPT_INCLUDE_DIR
   NAMES IpNLP.hpp
+  HINTS ${IPOPT_ROOT_DIR}/include/coin-or
   HINTS ${IPOPT_ROOT_DIR}/include/coin
   HINTS ${IPOPT_ROOT_DIR}/include
+  HINTS /usr/include/coin-or
   HINTS /usr/include/coin
   HINTS C:/msys64/mingw64/include/coin-or)
 
