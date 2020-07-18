@@ -9,7 +9,7 @@ find_package(Boost 1.58.0 COMPONENTS thread system filesystem iostreams
 
 add_library(${PROJECT_NAME} STATIC ${PROJECT_NAME}.cpp)
 
-target_compile_definitions(${PROJECT_NAME} PUBLIC CGAL_HEADER_ONLY)
+target_compile_definitions(${PROJECT_NAME} PRIVATE CGAL_HEADER_ONLY)
 
 target_link_libraries(${PROJECT_NAME}
   PRIVATE gmp  ${LIBXML2_LIBRARIES} ${Iconv_LIBRARIES}
@@ -17,4 +17,5 @@ target_link_libraries(${PROJECT_NAME}
   ${Boost_FILESYSTEM_LIBRARY} ${Boost_IOSTREAMS_LIBRARY})
 
 target_include_directories(${PROJECT_NAME}
+  PUBLIC ../../include
   PRIVATE ${LIBXML2_INCLUDE_DIR} ${Iconv_INCLUDE_DIR} ${Boost_INCLUDE_DIRS})

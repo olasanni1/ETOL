@@ -9,16 +9,14 @@ if(PYTHON_EXECUTABLE)
   if(pybind11_FOUND)
     add_library(${PROJECT_NAME} STATIC ${PROJECT_NAME}.cpp)
 
-    target_link_libraries(
-      ${PROJECT_NAME}
+    target_link_libraries(${PROJECT_NAME}
       PUBLIC TrajectoryOptimizer
       PRIVATE pybind11::embed)
   else()
-    message("Skipping TrajDymos...")
-    message("To build this, install pybind11, openmdao and dymos")
-
+    message("Skipping eDymos...")
+    message("To build this, install pybind11, openmdao, and dymos")
   endif()
 else()
-  message("Skipping TrajDymos...")
+  message("Skipping eDymos...")
   message("To build this set, -DPYTHON_EXECUTABLE=</path/to/python3>")
 endif()

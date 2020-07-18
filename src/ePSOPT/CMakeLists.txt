@@ -7,14 +7,12 @@ find_package(PSOPT)
 if(PSOPT_FOUND)
   add_library(${PROJECT_NAME} STATIC ${PROJECT_NAME}.cpp)
 
-  target_link_libraries(
-    ${PROJECT_NAME}
-    PUBLIC TrajectoryOptimizer
-    PRIVATE ${PSOPT_LIBRARIES})
+  target_link_libraries(${PROJECT_NAME}
+    PUBLIC TrajectoryOptimizer ${PSOPT_LIBRARIES})
 
-  target_include_directories(${PROJECT_NAME} PRIVATE ${PSOPT_INCLUDE_DIRS})
+  target_include_directories(${PROJECT_NAME} PUBLIC ${PSOPT_INCLUDE_DIRS})
 
-  target_compile_definitions(${PROJECT_NAME} PRIVATE ${PSOPT_DEFINITIONS})
+  target_compile_definitions(${PROJECT_NAME} PUBLIC ${PSOPT_DEFINITIONS})
 
 else()
   message("Skipping ePSOPT...")

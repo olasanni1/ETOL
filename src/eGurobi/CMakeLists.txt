@@ -7,12 +7,11 @@ find_package(GUROBI)
 if(GUROBI_FOUND)
   add_library(${PROJECT_NAME} STATIC ${PROJECT_NAME}.cpp)
 
-  target_link_libraries(
-    ${PROJECT_NAME}
+  target_link_libraries(${PROJECT_NAME}
     PUBLIC TrajectoryOptimizer
     PRIVATE ${GUROBI_LIBRARIES})
 
-  target_include_directories(${PROJECT_NAME} PRIVATE ${GUROBI_INCLUDE_DIRS})
+  target_include_directories(${PROJECT_NAME} PUBLIC ${GUROBI_INCLUDE_DIRS})
 else()
   message("Skipping eGurobi...")
   message("To build eGurobi, install Gurobi")
