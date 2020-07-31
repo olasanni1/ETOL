@@ -358,13 +358,15 @@ void eDymos::solve() {
             "refine_iteration_limit"_a = max_mesh_iter_);
 
     // Get score from Dymos
-    py::list jval_list = _alg.attr("get_val")(
+    py::object exp_out = _sol.attr("simulate")();
+    py::list jval_list = exp_out.attr("get_val")(
             "traj.phase0.timeseries.states:jval");
     double j_tf = (*(jval_list.end()-1)).cast<double>();
     this->setScore(j_tf);
 
     // Get state and control trajectories from Dymos
     this->getTraj();
+
 
     /*  Plot results
     py::object plt = py::module::import("matplotlib.pyplot");
@@ -415,6 +417,9 @@ void eDymos::setAlg() {
     }
     if (with_coloring_)
         _alg.attr("driver").attr("declare_coloring")();
+    _alg.attr("model").attr("linear_solver") =  _om.attr("DirectSolver")();
+    _alg.attr("model").attr("nonlinear_solver") =  _om.attr("NewtonSolver")(
+            "solve_subsystems"_a = false);
 }
 
 void eDymos::setProb() {
@@ -468,7 +473,7 @@ void eDymos::setProb() {
                 "rate_source"_a = getDerivName(j).c_str(),
                 "lower"_a = *(it_xlo),
                 "upper"_a = *(it_xup),
-                "fix_initial"_a = true,
+                "fix_initial"_a = false,
                 "fix_final"_a = false,
                 "targets"_a = getStateName(j).c_str());
         _prob.attr("add_boundary_constraint")(getStateName(j).c_str(),
