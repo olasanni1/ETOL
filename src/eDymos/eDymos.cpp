@@ -396,8 +396,9 @@ void eDymos::debug() {
     }
     if (_alg.attr("driver").attr("options")["optimizer"].cast<std::string>()
             == "IPOPT") {
-        _alg.attr("driver").attr("opt_settings")["print_results"] = true;
+        _alg.attr("driver").attr("opt_settings")["file_print_level"] = 5;
         _alg.attr("driver").attr("opt_settings")["print_level"] = 5;
+
     }
 }
 
@@ -429,10 +430,8 @@ void eDymos::setAlg() {
                 "opt_settings")["nlp_scaling_method"] = "gradient-based";
         _alg.attr("driver").attr(
                 "opt_settings")["hessian_approximation"] = "limited-memory";
-        _alg.attr("driver").attr(
-                "opt_settings")["print_results"] = false;
-        _alg.attr("driver").attr(
-                "opt_settings")["print_level"] = 0;
+        _alg.attr("driver").attr("opt_settings")["file_print_level"] = 0;
+        _alg.attr("driver").attr("opt_settings")["print_level"] = 0;
     }
     if (with_coloring_)
         _alg.attr("driver").attr("declare_coloring")();
