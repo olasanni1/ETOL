@@ -358,8 +358,7 @@ void eDymos::solve() {
             "refine_iteration_limit"_a = max_mesh_iter_);
 
     // Get score from Dymos
-    py::object exp_out = _sol.attr("simulate")();
-    py::list jval_list = exp_out.attr("get_val")(
+    py::list jval_list = _alg.attr("get_val")(
             "traj.phase0.timeseries.states:jval");
     double j_tf = (*(jval_list.end()-1)).cast<double>();
     this->setScore(j_tf);
@@ -389,10 +388,17 @@ void eDymos::solve() {
 }
 
 void eDymos::debug() {
+    _alg.attr("driver").attr("options")["print_results"] = true;
     _alg.attr("set_solver_print")("level"_a = 2);
     if (_alg.attr("driver").attr("options")["optimizer"].cast<std::string>()
-            == "SNOPT")
+            == "SNOPT") {
         _alg.attr("driver").attr("opt_settings")["iSumm"] = 6;
+    }
+    if (_alg.attr("driver").attr("options")["optimizer"].cast<std::string>()
+            == "IPOPT") {
+        _alg.attr("driver").attr("opt_settings")["print_results"] = true;
+        _alg.attr("driver").attr("opt_settings")["print_level"] = 5;
+    }
 }
 
 void eDymos::close() {}
@@ -400,8 +406,10 @@ void eDymos::close() {}
 // Private functions
 
 void eDymos::setAlg() {
+    _alg.attr("set_solver_print")("level"_a = 0);
     _alg.attr("driver") =  _om.attr("pyOptSparseDriver")();
     _alg.attr("driver").attr("options")["optimizer"] = getOptimizer().c_str();
+    _alg.attr("driver").attr("options")["print_results"] = false;
     if (_alg.attr("driver").attr("options")["optimizer"].cast<std::string>()
                 == "SNOPT") {
         _alg.attr("driver").attr("options")["user_teriminate_signal"] =
@@ -410,10 +418,21 @@ void eDymos::setAlg() {
             "opt_settings")["Major iterations limit"] = getMaxIter();
         _alg.attr("driver").attr(
             "opt_settings")["Minor iterations limit"] = getMaxIter();
+        _alg.attr("driver").attr("opt_settings")["Verify level"] = 0;
     } else if (_alg.attr("driver")
             .attr("options")["optimizer"].cast<std::string>() == "IPOPT")  {
         _alg.attr("driver").attr(
             "opt_settings")["max_iter"] = getMaxIter();
+        _alg.attr("driver").attr(
+                "opt_settings")["linear_solver"] = "mumps";
+        _alg.attr("driver").attr(
+                "opt_settings")["nlp_scaling_method"] = "gradient-based";
+        _alg.attr("driver").attr(
+                "opt_settings")["hessian_approximation"] = "limited-memory";
+        _alg.attr("driver").attr(
+                "opt_settings")["print_results"] = false;
+        _alg.attr("driver").attr(
+                "opt_settings")["print_level"] = 0;
     }
     if (with_coloring_)
         _alg.attr("driver").attr("declare_coloring")();
@@ -458,9 +477,7 @@ void eDymos::setProb() {
     // Set the objective variable as a state
     _prob.attr("add_state")("jval", "rate_source"_a = "jdot",
         "fix_initial"_a = true, "fix_final"_a = false, "units"_a = nullptr,
-        "solve_segments"_a = true, "targets"_a = "jval");
-    _prob.attr("add_boundary_constraint")("jval",
-                    "loc"_a = "initial", "equals"_a = 0.);
+        "solve_segments"_a = true, "lower"_a = 0.0, "targets"_a = "jval");
 
     // Set the states
     state_t::iterator it_xlo = this->getXlower().begin();
@@ -473,11 +490,12 @@ void eDymos::setProb() {
                 "rate_source"_a = getDerivName(j).c_str(),
                 "lower"_a = *(it_xlo),
                 "upper"_a = *(it_xup),
-                "fix_initial"_a = false,
+                "fix_initial"_a = true,
                 "fix_final"_a = false,
+                "solve_segments"_a = true,
                 "targets"_a = getStateName(j).c_str());
-        _prob.attr("add_boundary_constraint")(getStateName(j).c_str(),
-                "loc"_a = "initial", "equals"_a = *(it_x0));
+        //  _prob.attr("add_boundary_constraint")(getStateName(j).c_str(),
+        //        "loc"_a = "initial", "equals"_a = *(it_x0));
         _prob.attr("add_boundary_constraint")(getStateName(j).c_str(),
                         "loc"_a = "final",
                         "upper"_a = *(it_xf) + *(it_xtol),
@@ -663,7 +681,7 @@ class eDymosODE(om.ExplicitComponent):
                 name = 'u' + str(j)
                 self.declare_partials(of=pname, wrt=name,
                                   rows=r, cols=c)
-            
+
     def compute(self, inputs, outputs):
         edymos = self.options['edymos']
         ns = self.options['num_states']
@@ -686,29 +704,6 @@ class eDymosODE(om.ExplicitComponent):
         for i in range(npc):
             name = 'p' + str(i)
             outputs[name] = result[name]
-            
-                     
-    def compute(self, inputs, outputs):
-        edymos = self.options['edymos']
-        ns = self.options['num_states']
-        nc = self.options['num_controls']
-        npc = self.options['num_path_constraints']
-        data = {'t':inputs['t']}
-        for i in range(ns):
-            xname = 'x%i'%i
-            data[xname] = inputs[xname]
-        for i in range(nc):
-            uname = 'u%i'%i
-            data[uname] = inputs[uname]
-
-        result = ed.compute(edymos, data)
-                
-        for i in range(ns):
-            dname = 'x%idot'%i
-            outputs[dname] = result[dname]
-        for i in range(npc):
-            pname = 'p%i'%i
-            outputs[pname] = result[pname]
             
                      
     def compute_partials(self, inputs, partials):
