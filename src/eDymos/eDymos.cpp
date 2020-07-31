@@ -424,7 +424,8 @@ void eDymos::setProb() {
     // Try to set the number of segments based on the number of time steps
     this->num_segments_ = (this->num_segments_ > (this->getNSteps()+1)/order_) ?
             this->num_segments_ : (this->getNSteps()+1)/order_;
-
+    py::tuple seg_ends = py::module::import(
+            "dymos.utils.lgl").attr("lgl")(num_segments_ + 1);
     _prob = _sol.attr("add_phase")("phase0", _dm.attr("Phase")(
                 "ode_class"_a = py::eval("eDymosODE", scope),
                         //  py::module::import("edymosode").attr("eDymosODE"),
@@ -435,8 +436,9 @@ void eDymos::setProb() {
                     "num_controls"_a = static_cast<int>(this->getNControls()),
                     "num_path_constraints"_a =
                             static_cast<int>(this->getConstraints()->size())),
-            "transcription"_a = _dm.attr("GaussLobatto")(
+            "transcription"_a = _dm.attr("Radau")(
                     "num_segments"_a = num_segments_,
+                    "segment_ends"_a = *seg_ends.begin(),
                     "order"_a = order_,
                     "compressed"_a = compressed_)));
 
@@ -450,8 +452,8 @@ void eDymos::setProb() {
 
     // Set the objective variable as a state
     _prob.attr("add_state")("jval", "rate_source"_a = "jdot",
-        "fix_initial"_a = false, "fix_final"_a = false, "units"_a = nullptr,
-        "targets"_a = "jval");
+        "fix_initial"_a = true, "fix_final"_a = false, "units"_a = nullptr,
+        "solve_segments"_a = true, "targets"_a = "jval");
     _prob.attr("add_boundary_constraint")("jval",
                     "loc"_a = "initial", "equals"_a = 0.);
 
@@ -466,7 +468,7 @@ void eDymos::setProb() {
                 "rate_source"_a = getDerivName(j).c_str(),
                 "lower"_a = *(it_xlo),
                 "upper"_a = *(it_xup),
-                "fix_initial"_a = false,
+                "fix_initial"_a = true,
                 "fix_final"_a = false,
                 "targets"_a = getStateName(j).c_str());
         _prob.attr("add_boundary_constraint")(getStateName(j).c_str(),
