@@ -13,12 +13,24 @@
  * a Mixed-Integer Linear Programming (MILP) problem.
  ******************************************************************************/
 
+#include <ETOL/eGurobi.hpp>
 #include <iostream>
 #include <cassert>
-#include <ETOL/eGurobi.hpp>
+#include <execution>
+#include <algorithm>
+#include <numeric>
+#include <string>
 
 namespace ETOL {
 // Constructors
+
+#ifdef PSTL_USE_PARALLEL_POLICIES
+constexpr std::execution::parallel_policy EXEC_POLICY_SEQ{};
+constexpr std::execution::parallel_unsequenced_policy EXEC_POLICY_UNSEQ{};
+#else
+constexpr std::execution::sequenced_policy EXEC_POLICY_SEQ{};
+constexpr std::execution::unsequenced_policy EXEC_POLICY_UNSEQ{};
+#endif
 
 eGurobi::eGurobi()
     : eGurobi::TrajectoryOptimizer(), env_(GRBEnv()), model_(GRBModel(env_)),
@@ -41,7 +53,7 @@ std::string eGurobi::getControlName(const size_t& tIdx, const size_t& sIdx) {
     return("u_" + std::to_string(tIdx) + "_" + std::to_string(sIdx));
 }
 
-std::string eGurobi::getParamName(const std::string name,
+std::string eGurobi::getParamName(const std::string& name,
         const size_t& kIdx) {
     return(name + "_" + std::to_string(kIdx));
 }
@@ -116,16 +128,24 @@ void eGurobi::close() {}
 GRBLinExpr eGurobi::_objfunc(const size_t &tIdx) {
     std::any f_val;
     GRBLinExpr expr;
-    vector_t x;
-    vector_t u;
-    for (size_t j(0); j < this->_nStates; j++) {
-        GRBVar var = (*this->_model).getVarByName(getStateName(tIdx, j));
-        x.push_back(var);
-    }
-    for (size_t j(0); j < this->_nControls; j++) {
-        GRBVar var = (*this->_model).getVarByName(getControlName(tIdx, j));
-        u.push_back(var);
-    }
+    vector_t x(getNStates());
+    vector_t u(getNControls());
+    std::vector<size_t> x_idx(getNStates());
+    std::vector<size_t> u_idx(getNControls());
+
+    std::iota(x_idx.begin(), x_idx.end(), 0);
+
+    std::transform(std::execution::seq,
+            x_idx.begin(), x_idx.end(), x.begin(),
+       [this, &tIdx](const size_t& j) -> scalar_t {
+       return (*this->_model).getVarByName(getStateName(tIdx, j));
+    });
+
+    std::iota(u_idx.begin(), u_idx.end(), 0);
+    std::transform(EXEC_POLICY_UNSEQ, u_idx.begin(), u_idx.end(), u.begin(),
+       [this, &tIdx](const size_t& j) -> scalar_t {
+       return (*this->_model).getVarByName(getControlName(tIdx, j));
+    });
 
     f_val = (*this->_objective)(
             x, u, this->_params, this->_pnames, tIdx, this->getDt());
@@ -139,24 +159,28 @@ GRBLinExpr eGurobi::_objfunc(const size_t &tIdx) {
 }
 
 GRBLinExpr eGurobi::_dynConstr(const size_t &tIdx, const size_t &sIdx) {
+    assert(tIdx >= getXrhorizon());
+    assert(tIdx >= getUrhorizon());
     std::any f_val;
     GRBLinExpr expr;
-    vector_t x;
-    vector_t u;
-    for (size_t k(0); k <= this->getXrhorizon(); k++) {
-        for (size_t j(0); j < this->_nStates; j++) {
-            size_t i = tIdx-k;
-            GRBVar var = (*this->_model).getVarByName(getStateName(i, j));
-            x.push_back(var);
-        }
-    }
-    for (size_t k(0); k <= this->getUrhorizon(); k ++) {
-        for (size_t j(0) ; j < this->_nControls; j++) {
-            size_t i = tIdx-k;
-            GRBVar var = (*this->_model).getVarByName(getControlName(i, j));
-            u.push_back(var);
-        }
-    }
+    std::vector<size_t> x_idx(getNStates() * (getXrhorizon()+1));
+    std::vector<size_t> u_idx(getNControls() * (getUrhorizon()+1));
+    vector_t x(getNStates() * (getXrhorizon()+1));
+    vector_t u(getNControls() * (getUrhorizon()+1));
+
+    std::iota(x_idx.begin(), x_idx.end(), 0);
+    std::transform(EXEC_POLICY_UNSEQ, x_idx.begin(), x_idx.end(), x.begin(),
+            [this, &tIdx](const size_t& j) -> scalar_t {
+       return (*this->_model).getVarByName(getStateName(
+               tIdx - j / this->getNStates(), j % this->getNStates()));
+    });
+
+    std::iota(u_idx.begin(), u_idx.end(), 0);
+    std::transform(EXEC_POLICY_UNSEQ, u_idx.begin(), u_idx.end(), u.begin(),
+            [this, &tIdx](const size_t& j) -> scalar_t {
+       return (*this->_model).getVarByName(getControlName(
+               tIdx - j / this->getNControls(), j % this->getNControls()));
+    });
 
     f_t* f = _gradient.at(sIdx);
     f_val = (*f)(x, u, this->_params, this->_pnames, tIdx, this->getDt());
@@ -172,16 +196,22 @@ GRBLinExpr eGurobi::_dynConstr(const size_t &tIdx, const size_t &sIdx) {
 fout_grb_t eGurobi::_pathConstr(const size_t &tIdx, const size_t &kIdx) {
     std::any p_val;
     fout_grb_t fout;
-    vector_t x;
-    vector_t u;
-    for (size_t j(0); j < this->_nStates; j++) {
-        GRBVar var = (*this->_model).getVarByName(getStateName(tIdx, j));
-        x.push_back(var);
-    }
-    for (size_t j(0); j < this->_nControls; j++) {
-        GRBVar var = (*this->_model).getVarByName(getControlName(tIdx, j));
-        u.push_back(var);
-    }
+    vector_t x(getNStates());
+    vector_t u(getNControls());
+    std::vector<size_t> x_idx(getNStates());
+    std::vector<size_t> u_idx(getNControls());
+
+    std::iota(x_idx.begin(), x_idx.end(), 0);
+    std::transform(EXEC_POLICY_UNSEQ, x_idx.begin(), x_idx.end(), x.begin(),
+       [this, &tIdx](const size_t& j) -> scalar_t {
+       return (*this->_model).getVarByName(getStateName(tIdx, j));
+    });
+
+    std::iota(u_idx.begin(), u_idx.end(), 0);
+    std::transform(EXEC_POLICY_UNSEQ, u_idx.begin(), u_idx.end(), u.begin(),
+       [this, &tIdx](const size_t& j) -> scalar_t {
+       return (*this->_model).getVarByName(getControlName(tIdx, j));
+    });
 
     f_t* p = this->_constraints.at(kIdx);
     p_val = (*p)(x, u, this->_params, this->_pnames, tIdx, this->getDt());
@@ -211,6 +241,9 @@ void eGurobi::errorHandler() {
 /**
  * State variables names are x_time#_state#. Control variable names are
  * u_time#_state#. Path constraint variable names are varName_time#
+ *
+ * These loops must be sequential to avoid data race condition and to align
+ * params and pnames indices
  */
 void eGurobi::createVars() {
     state_t::iterator l_it, u_it;
@@ -237,7 +270,7 @@ void eGurobi::createVars() {
 
             // varName_time#
             double t = static_cast<double>(k) * this->getDt();
-            for (auto param : this->_parmaeters) {
+            for (auto param : this->_parameters) {
                 if ((t >= param.second.tStart) && (t <= param.second.tStop)) {
                     GRBVar var;
                     var = (this->_model->addVar(
@@ -341,14 +374,27 @@ void eGurobi::addDyn() {
 
 void eGurobi::addObj() {
     try {
-        GRBLinExpr expr = this->_objfunc(0);
-        for (size_t i(1); i <= this->getNSteps(); i++)
-            expr += this->_objfunc(i);
+        std::vector<size_t> t_idx(getNSteps());
+
+        std::iota(t_idx.begin(), t_idx.end(), 0);
+
+        std::vector<GRBLinExpr> linExpr(getNSteps());
+
+        std::transform(EXEC_POLICY_UNSEQ, t_idx.begin(), t_idx.end(),
+                linExpr.begin(), [this](const size_t& i) -> GRBLinExpr {
+            return(this->_objfunc(i));
+        });
+
+        GRBLinExpr sum_expr = GRBLinExpr();
+        for_each(linExpr.begin(), linExpr.end(),
+            [&sum_expr](const auto &expr) {
+            sum_expr += expr;
+        });
 
         if (this->isMaximized())
-            this->_model->setObjective(expr, GRB_MAXIMIZE);
+            this->_model->setObjective(sum_expr, GRB_MAXIMIZE);
         else
-            this->_model->setObjective(expr, GRB_MINIMIZE);
+            this->_model->setObjective(sum_expr, GRB_MINIMIZE);
 
         this->_model->update();
     } catch (GRBException& ex) {
@@ -358,30 +404,42 @@ void eGurobi::addObj() {
 }
 
 void eGurobi::getTraj() {
-    try    {
+    try {
+        std::vector<size_t> t_idx(getNSteps()+1);
+        std::vector<size_t> x_idx(getNStates());
+        std::vector<size_t> u_idx(getNControls());
+
+        std::iota(t_idx.begin(), t_idx.end(), 0);
+        std::iota(x_idx.begin(), x_idx.end(), 0);
+        std::iota(u_idx.begin(), u_idx.end(), 0);
+
         traj_t* xtraj = this->getXtraj();
-        xtraj->clear();
-        for (size_t i(0); i <= this->getNSteps(); i++) {
-            state_t x;
+        xtraj->resize(getNSteps()+1);
+        std::transform(EXEC_POLICY_UNSEQ, t_idx.begin(), t_idx.end(),
+                xtraj->begin(), [this, &x_idx](const auto & i) -> traj_elem_t {
             double t = static_cast<double>(i) * this->getDt();
-            for (size_t j(0); j < this->getNStates(); j++) {
+            state_t x(this->getNStates());
+            std::transform(EXEC_POLICY_UNSEQ, x_idx.begin(), x_idx.end(),
+                    x.begin(), [this, &i](const auto &j) -> double {
                 GRBVar var = this->_model->getVarByName(getStateName(i, j));
-                x.push_back(var.get(GRB_DoubleAttr_X));
-            }
-            xtraj->push_back(traj_elem_t(t, x));
-        }
+                return(var.get(GRB_DoubleAttr_X));
+            });
+            return (traj_elem_t(t, x));
+        });
 
         traj_t* utraj = this->getUtraj();
-        utraj->clear();
-        for (size_t i(0); i <= this->getNSteps(); i++) {
-            state_t u;
+        utraj->resize(getNSteps()+1);
+        std::transform(EXEC_POLICY_UNSEQ, t_idx.begin(), t_idx.end(),
+                utraj->begin(), [this, &u_idx](const auto & i) -> traj_elem_t {
             double t = static_cast<double>(i) * this->getDt();
-            for (size_t j(0); j < this->getNControls(); j++) {
+            state_t u(getNControls());
+            std::transform(EXEC_POLICY_UNSEQ, u_idx.begin(), u_idx.end(),
+                    u.begin(), [this, &i](const auto &j) -> double {
                 GRBVar var = this->_model->getVarByName(getControlName(i, j));
-                u.push_back(var.get(GRB_DoubleAttr_X));
-            }
-            utraj->push_back(traj_elem_t(t, u));
-        }
+                return(var.get(GRB_DoubleAttr_X));
+            });
+            return (traj_elem_t(t, u));
+        });
     } catch (GRBException& ex) {
         this->_eGRB = &ex;
         errorHandler();

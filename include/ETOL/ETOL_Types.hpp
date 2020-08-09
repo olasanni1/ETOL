@@ -22,9 +22,9 @@
 #include <functional>
 
 #define PARAM_PAIR ETOL::param_name_t, ETOL::param_configs_t
-#define F_ARGS ETOL::vector_t x, ETOL::vector_t u, \
-    ETOL::vector_t params, std::vector<std::string> pnames, std::any k, \
-    std::any dt
+#define F_ARGS const ETOL::vector_t &x, const ETOL::vector_t &u, \
+    const ETOL::vector_t &params, const std::vector<std::string> &pnames, \
+    const std::any &k, const std::any &dt
 
 namespace ETOL {
 

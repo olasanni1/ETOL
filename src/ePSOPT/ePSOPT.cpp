@@ -55,7 +55,7 @@ void ePSOPT::setup() {
         this->_problem.phases(1).guess.time = ::linspace(0.,
                 getNSteps()*getDt(), getNSteps()+1);
 
-    _problem.phases(1).npath = static_cast<int>(this->_parmaeters.size());
+    _problem.phases(1).npath = static_cast<int>(this->_parameters.size());
 
     ::psopt_level2_setup(_problem, _algorithm);
 
@@ -123,7 +123,7 @@ Sol* ePSOPT::getSolution() {
 // Private functions
 
 void ePSOPT::addBounds() {
-    paramset_t::iterator param = this->_parmaeters.begin();
+    paramset_t::iterator param = this->_parameters.begin();
     state_t::iterator xlow(getXlower().begin()), xup(getXupper().begin()),
             ulow(getUlower().begin()), uup(getUupper().begin()),
             x0(getX0().begin()), xf(getXf().begin()), xtol(getXtol().begin());
@@ -146,7 +146,7 @@ void ePSOPT::addBounds() {
         _problem.phases(1).bounds.lower.controls(ii+1) = *(ulow++);
         _problem.phases(1).bounds.upper.controls(ii+1) =  *(uup++);
     }
-    for (size_t i= 0; i < this->_parmaeters.size(); i++) {
+    for (size_t i= 0; i < this->_parameters.size(); i++) {
         int ii = static_cast<int>(i);
         _problem.phases(1).bounds.lower.path(ii+1) = param->second.lbnd;
         _problem.phases(1).bounds.upper.path(ii+1) = (param++)->second.ubnd;
@@ -200,8 +200,9 @@ adouble ePSOPT::integrand_cost(adouble* states, adouble* controls,
             x.push_back(&states[i]);
     for (size_t i(0); i < ptr->getNControls(); i++)
         u.push_back(&controls[i]);
-
-    fout = (*ptr->_objective)(x, u, {""}, {""}, time,
+    vector_t params = {std::string()};
+    std::vector<std::string> pnames = {std::string("")};
+    fout = (*ptr->_objective)(x, u, params, pnames, time,
                                 ptr->getDt());
      try {
         f_val = std::any_cast<adouble>(fout);
@@ -254,7 +255,9 @@ void ePSOPT::dae(adouble* derivatives, adouble* path, adouble* states,
         adouble *tval  = &t;
         for (size_t i(0); i < ptr->getNStates(); i++) {
             f_t* f = ptr->_gradient.at(i);
-            f_val = (*f)(x, u, {""}, {""}, tval, ptr->getDt());
+            vector_t params = {std::string()};
+            std::vector<std::string> pnames = {std::string("")};
+            f_val = (*f)(x, u, params, pnames, tval, ptr->getDt());
             adouble out;
             out = std::any_cast<adouble>(f_val);
             derivatives[i] = out;
@@ -262,7 +265,9 @@ void ePSOPT::dae(adouble* derivatives, adouble* path, adouble* states,
         size_t j(0);
         for (size_t i(0); i < ptr->_constraints.size(); i++) {
             f_t* p = ptr->_constraints.at(i);
-            p_val = (*p)(x, u, {""}, {""}, tval, ptr->getDt());
+            vector_t params = {std::string()};
+            std::vector<std::string> pnames = {std::string("")};
+            p_val = (*p)(x, u, params, pnames, tval, ptr->getDt());
             fout_psopt_t out = std::any_cast<fout_psopt_t>(p_val);
             for (adouble val : out)
                 path[j++] = val;

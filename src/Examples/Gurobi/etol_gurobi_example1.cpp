@@ -289,7 +289,7 @@ ETOL::f_t obsConstraint(ETOL::TrajectoryOptimizer* t) {
                     std::string r("^(?:bot|top)_"+ std::to_string(ii) +
                             "_" + std::to_string(jj) + "_[0-9]*_" + t_str +
                                     "$");
-                    ETOL::vector_t::iterator p_it;
+                    ETOL::vector_t::const_iterator p_it;
                     p_it = params.begin();
                     for (auto name : pnames) {
                         if (re2::RE2::FullMatch(name, r))
@@ -430,7 +430,7 @@ ETOL::f_t saaConstraint(ETOL::TrajectoryOptimizer* t) {
                 std::string r("^d_" + std::to_string(ii) + "_" +
                         std::to_string(jj) + "_[0-9]*_" +
                         std::to_string(tIdx) + "$");
-                ETOL::vector_t::iterator p_it;
+                ETOL::vector_t::const_iterator p_it;
                 p_it = params.begin();
 
                 for (auto name : pnames) {

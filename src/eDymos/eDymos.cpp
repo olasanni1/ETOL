@@ -121,13 +121,16 @@ py::dict eDymos::dymosCompute(void* handle, py::dict inputs) {
         });
         // Call callbacks for calculating computes
         // Objective function
-        obj_val = (*ptr->_objective)(x, u, {std::string()}, {std::string()},
-                t, dt);
+        vector_t params = {std::string()};
+        std::vector<std::string> pnames = {std::string("")};
+        obj_val = (*ptr->_objective)(x, u, params, pnames, t, dt);
         // State time derivatives
         for_each(ptr->getGradient()->begin(), ptr->getGradient()->end(),
             [&x, &u, &t, &dt, &dx_val](f_t* grad) {
                 scalar_t val;
-                val = (*grad)(x, u, {std::string()}, {std::string()}, t, dt);
+                vector_t params = {std::string()};
+                std::vector<std::string> pnames = {std::string()};
+                val = (*grad)(x, u, params, pnames, t, dt);
                 try {
                     dx_val.push_back((std::any_cast<std::vector<double>>(val))
                             .at(0));
@@ -140,7 +143,9 @@ py::dict eDymos::dymosCompute(void* handle, py::dict inputs) {
         for_each(ptr->getConstraints()->begin(), ptr->getConstraints()->end(),
             [&x, &u, &t, &dt, &p_val](f_t* con) {
                 scalar_t val;
-                val = (*con)(x, u, {std::string()}, {std::string()}, t, dt);
+                vector_t params = {std::string()};
+                std::vector<std::string> pnames = {std::string()};
+                val = (*con)(x, u, params, pnames, t, dt);
                 try {
                     p_val.push_back((std::any_cast<std::vector<double>>(val))
                             .at(0));
@@ -238,8 +243,9 @@ py::dict eDymos::dymosComputePartials(void* handle, py::dict inputs) {
 
         // Call callbacks for calculating computes
         // Objective function
-        obj_val = (*ptr->_objective)(x, u, {std::string()},
-                    {std::string("partials")}, t, dt);
+        vector_t params = {std::string()};
+        std::vector<std::string> pnames = {std::string("partials")};
+        obj_val = (*ptr->_objective)(x, u, params, pnames, t, dt);
         try {
              obj = std::any_cast<std::vector<double>>(obj_val);
         } catch (...) {
@@ -249,7 +255,9 @@ py::dict eDymos::dymosComputePartials(void* handle, py::dict inputs) {
         for_each(ptr->getGradient()->begin(), ptr->getGradient()->end(),
             [&x, &u, &t, &dt, &dx](f_t* grad) {
                 scalar_t val;
-                val = (*grad)(x, u, {std::string()}, {"partials"}, t, dt);
+                vector_t params = {std::string()};
+                std::vector<std::string> pnames = {std::string("partials")};
+                val = (*grad)(x, u, params, pnames, t, dt);
                 try {
                     dx.push_back(std::any_cast<std::vector<double>>(val));
                 } catch (...) {
@@ -261,7 +269,9 @@ py::dict eDymos::dymosComputePartials(void* handle, py::dict inputs) {
         for_each(ptr->getConstraints()->begin(), ptr->getConstraints()->end(),
             [&x, &u, &t, &dt, &p](f_t* con) {
                 scalar_t val;
-                val = (*con)(x, u, {std::string()}, {"partials"}, t, dt);
+                vector_t params = {std::string()};
+                std::vector<std::string> pnames = {std::string("partials")};
+                val = (*con)(x, u, params, pnames, t, dt);
                 try {
                     p.push_back(std::any_cast<std::vector<double>>(val));
                 } catch (...) {
@@ -398,7 +408,6 @@ void eDymos::debug() {
             == "IPOPT") {
         _alg.attr("driver").attr("opt_settings")["file_print_level"] = 5;
         _alg.attr("driver").attr("opt_settings")["print_level"] = 5;
-
     }
 }
 

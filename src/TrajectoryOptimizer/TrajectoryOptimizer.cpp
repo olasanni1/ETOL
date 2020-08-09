@@ -1617,7 +1617,7 @@ void TrajectoryOptimizer::saveConfigs(const char* filepath) {
 
 void TrajectoryOptimizer::addParams(std::list<param_t> params) {
     for (auto elem : params)
-        this->_parmaeters.insert(std::make_pair(elem.first, elem.second));
+        this->_parameters.insert(std::make_pair(elem.first, elem.second));
 }
 
 void TrajectoryOptimizer::addExclZone(border_t* border) {

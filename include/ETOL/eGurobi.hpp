@@ -85,7 +85,8 @@ class eGurobi : public TrajectoryOptimizer{
      * @param tIdx a time index
      * @return a custom variable name
      */
-    static std::string getParamName(const std::string name, const size_t& tIdx);
+    static std::string getParamName(const std::string& name,
+            const size_t& tIdx);
 
 
 
