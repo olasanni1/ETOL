@@ -1615,9 +1615,20 @@ void TrajectoryOptimizer::saveConfigs(const char* filepath) {
     xmlFreeTextWriter(writer);
 }
 
-void TrajectoryOptimizer::addParams(std::list<param_t> params) {
-    for (auto elem : params)
+void TrajectoryOptimizer::addParams(const std::list<param_t>& params) {
+    for (const auto &elem : params)
         this->_parameters.insert(std::make_pair(elem.first, elem.second));
+}
+
+void TrajectoryOptimizer::addParams(
+        const std::vector<std::vector<ETOL::param_t>>& params) {
+    for (const auto &elem : params) {
+        std::transform(elem.cbegin(), elem.cend(), std::inserter(
+                this->_parameters, this->_parameters.end()),
+                [](const ETOL::param_t &param) {
+           return (std::make_pair(param.first, param.second));
+        });
+    }
 }
 
 void TrajectoryOptimizer::addExclZone(border_t* border) {

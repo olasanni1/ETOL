@@ -82,7 +82,14 @@ class TrajectoryOptimizer {
      * @brief Adds a non-state or non-control variable to the problem
      * @param params name and settings for the new variable
      */
-    void addParams(std::list<param_t> params);
+    void addParams(const std::list<param_t> &params);
+
+    /**
+     * @brief Adds a non-state or non-control variable to the problem
+     * @param params name and settings for the new variable
+     */
+    void addParams(const std::vector<std::vector<ETOL::param_t>> &params);
+
 
     /**
      * @brief Add an exclusion zone to the problem
