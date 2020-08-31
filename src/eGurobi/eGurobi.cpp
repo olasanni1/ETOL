@@ -135,7 +135,7 @@ GRBLinExpr eGurobi::_objfunc(const size_t &tIdx) {
 
     std::iota(x_idx.begin(), x_idx.end(), 0);
 
-    std::transform(std::execution::seq,
+    std::transform(EXEC_POLICY_UNSEQ,
             x_idx.begin(), x_idx.end(), x.begin(),
        [this, &tIdx](const size_t& j) -> scalar_t {
        return (*this->_model).getVarByName(getStateName(tIdx, j));

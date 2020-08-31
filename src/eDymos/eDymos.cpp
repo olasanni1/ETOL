@@ -19,6 +19,8 @@
 #include <pybind11/embed.h>
 #include <pybind11/pybind11.h>
 #include <pybind11/numpy.h>
+#include <execution>
+#include <algorithm>
 #include <any>
 #include <iostream>
 #include <ETOL/eDymos.hpp>
@@ -36,6 +38,14 @@ PYBIND11_EMBEDDED_MODULE(edymos, m) {
 }
 
 namespace ETOL {
+
+#ifdef PSTL_USE_PARALLEL_POLICIES
+constexpr std::execution::parallel_policy EXEC_POLICY_SEQ{};
+constexpr std::execution::parallel_unsequenced_policy EXEC_POLICY_UNSEQ{};
+#else
+constexpr std::execution::sequenced_policy EXEC_POLICY_SEQ{};
+constexpr std::execution::unsequenced_policy EXEC_POLICY_UNSEQ{};
+#endif
 
 // Constructor
 
@@ -74,252 +84,362 @@ std::string eDymos::getPathConstraintName(const size_t& pIdx) {
 py::dict eDymos::dymosCompute(void* handle, py::dict inputs) {
     py::dict kv;
 
-    std::vector<py::buffer_info> xbufs, ubufs;
-
     eDymos* ptr = reinterpret_cast<eDymos*>(handle);
     double dt = ptr->getDt();
 
     // Extract variable values
-    py::array_t<double> tvec = inputs["t"].cast<py::array_t<double>>();
-    py::buffer_info tbuf = tvec.request();
+
+    // Time
+    py::buffer_info tbuf = (inputs["t"].cast<py::array_t<double>>()).request();
+
+    // States
+    std::vector<py::buffer_info> xbufs;
+    std::vector<size_t> x_idx(ptr->getNStates());
+    std::iota(x_idx.begin(), x_idx.end(), 0);
     for (size_t j(0); j < ptr->getNStates(); j++) {
-        py::array_t<double> xvec = inputs[getStateName(j).c_str()]
-                                      .cast<py::array_t<double>>();
-        xbufs.push_back(xvec.request());
+       xbufs.push_back((inputs[getStateName(j).c_str()]
+                               .cast<py::array_t<double>>()).request());
     }
+
+    // Controls
+    std::vector<py::buffer_info> ubufs;
+    std::vector<size_t> u_idx(ptr->getNControls());
+    std::iota(u_idx.begin(), u_idx.end(), 0);
     for (size_t j(0); j < ptr->getNControls(); j++) {
-        py::array_t<double> uvec = inputs[getControlName(j).c_str()]
-                                      .cast<py::array_t<double>>();
-        ubufs.push_back(uvec.request());
+       ubufs.push_back((inputs[getControlName(j).c_str()]
+                               .cast<py::array_t<double>>()).request());
     }
+
     // Declare output arrays
+
+    // Objective array
     py::array_t<double> jdotvec =
             py::array_t<double>(  // @suppress("Symbol is not resolved")
             tbuf.size);
+    py::buffer_info jdot = jdotvec.request();
 
+    // State time-derivative arrays
     std::vector<py::array_t<double>> xdotvec;
-    for (size_t i(0); i < ptr->getNStates(); i++)
+    std::vector<py::buffer_info> xdot;
+    for (size_t i(0); i < ptr->getNStates(); i++) {
         xdotvec.push_back(
                 py::array_t<double>(     // @suppress("Symbol is not resolved")
                     tbuf.size));
-    std::vector<py::array_t<double>> pvec;
-    for (size_t i(0); i < ptr->getConstraints()->size(); i++)
-        pvec.push_back(
+        xdot.push_back(xdotvec.back().request());
+    }
+
+    // Path arrays
+    std::vector<size_t> p_idx(ptr->getConstraints()->size());
+    std::iota(p_idx.begin(), p_idx.end(), 0);
+    std::vector<py::array_t<double>> pathvec;
+    std::vector<py::buffer_info> path;
+    for (size_t i(0); i < ptr->getConstraints()->size(); i++) {
+        pathvec.push_back(
                 py::array_t<double>(     // @suppress("Symbol is not resolved")
                         tbuf.size));
-    for (size_t idx(0); idx < tbuf.shape[0]; idx++) {
-        scalar_t obj_val;
-        vector_t x, u;
-        std::vector<double> dx_val, p_val;
+        path.push_back(pathvec.back().request());
+    }
+
+    // Compute values for each time index
+    std::vector<size_t> t_idx(tbuf.shape[0]);
+    std::iota(t_idx.begin(), t_idx.end(), 0);
+    for_each(EXEC_POLICY_UNSEQ,
+            t_idx.begin(), t_idx.end(), [&](const size_t& idx){
         // Set variables for callbacks
+        // Time
         scalar_t t = reinterpret_cast<double *>(tbuf.ptr)[idx];
-        for_each(xbufs.begin(), xbufs.end(), [&x, &idx](py::buffer_info& xbuf) {
-           x.push_back(reinterpret_cast<double *>(xbuf.ptr)[idx]);
+
+        // States
+        vector_t x(ptr->getNStates());
+        std::transform(EXEC_POLICY_UNSEQ,
+                xbufs.begin(), xbufs.end(), x.begin(),
+            [&idx](py::buffer_info& xbuf) -> scalar_t {
+            return (reinterpret_cast<double *>(xbuf.ptr)[idx]);
         });
-        for_each(ubufs.begin(), ubufs.end(), [&u, &idx](py::buffer_info& ubuf) {
-           u.push_back(reinterpret_cast<double *>(ubuf.ptr)[idx]);
+
+        // Controls
+        vector_t u(ptr->getNControls());
+        std::transform(EXEC_POLICY_UNSEQ,
+                ubufs.begin(), ubufs.end(), u.begin(),
+            [&idx](py::buffer_info& ubuf) -> scalar_t {
+            return (reinterpret_cast<double *>(ubuf.ptr)[idx]);
         });
-        // Call callbacks for calculating computes
+
+        // Use callbacks to get compute() results
+
         // Objective function
         vector_t params = {std::string()};
         std::vector<std::string> pnames = {std::string("")};
-        obj_val = (*ptr->_objective)(x, u, params, pnames, t, dt);
+        scalar_t obj_val = (*ptr->_objective)(x, u, params, pnames, t, dt);
+
         // State time derivatives
-        for_each(ptr->getGradient()->begin(), ptr->getGradient()->end(),
-            [&x, &u, &t, &dt, &dx_val](f_t* grad) {
-                scalar_t val;
-                vector_t params = {std::string()};
-                std::vector<std::string> pnames = {std::string()};
-                val = (*grad)(x, u, params, pnames, t, dt);
-                try {
-                    dx_val.push_back((std::any_cast<std::vector<double>>(val))
-                            .at(0));
-                } catch (...) {
-                    std::cout << "Gradient any_cast failed!" << std::endl;
-                }
+        std::vector<double> dx_val(ptr->getGradient()->size());
+        auto it_dx = ptr->getGradient()->begin();
+        std::transform(EXEC_POLICY_UNSEQ,
+                ptr->getGradient()->cbegin(), ptr->getGradient()->cend(),
+                dx_val.begin(),
+            [&x, &u, &t, &dt, &dx_val](const f_t* grad) -> double {
+            scalar_t val;
+            vector_t params = {std::string()};
+            std::vector<std::string> pnames = {std::string()};
+            val = (*grad)(x, u, params, pnames, t, dt);
+            try {
+                return((std::any_cast<std::vector<double>>(val)).at(0));
+            } catch (...) {
+                std::cout << "compute() gradient any_cast failed!" << std::endl;
+            }
+            return 0.;
         });
 
         // Path constraints
-        for_each(ptr->getConstraints()->begin(), ptr->getConstraints()->end(),
-            [&x, &u, &t, &dt, &p_val](f_t* con) {
-                scalar_t val;
-                vector_t params = {std::string()};
-                std::vector<std::string> pnames = {std::string()};
-                val = (*con)(x, u, params, pnames, t, dt);
-                try {
-                    p_val.push_back((std::any_cast<std::vector<double>>(val))
-                            .at(0));
-                } catch (...) {
-                    std::cout << "Path constraint any_cast failed!"
-                            << std::endl;
-                }
+        std::vector<double> p_val(ptr->getConstraints()->size());
+        std::transform(EXEC_POLICY_UNSEQ,
+                ptr->getConstraints()->cbegin(), ptr->getConstraints()->cend(),
+                p_val.begin(),
+            [&x, &u, &t, &dt, &p_val](const f_t* con) -> double {
+            scalar_t val;
+            vector_t params = {std::string()};
+            std::vector<std::string> pnames = {std::string()};
+            val = (*con)(x, u, params, pnames, t, dt);
+            try {
+                return((std::any_cast<std::vector<double>>(val)).at(0));
+            } catch (...) {
+                std::cout << "compute() path any_cast failed!" << std::endl;
+            }
+            return 0.;
         });
 
         // Pass the results to the numpy array outputs
-        std::vector<double> obj = std::any_cast<std::vector<double>>(
-                obj_val);
-        reinterpret_cast<double*>(jdotvec.request().ptr)[idx] = obj.at(0);
-        size_t sIdx = 0;
-        for_each(dx_val.begin(), dx_val.end(),
-            [&sIdx, &xdotvec, &idx](double& val){
-            reinterpret_cast<double*>(xdotvec.at(sIdx++).request().ptr)[idx]
-                            = val;
-        });
-        size_t pIdx = 0;
-        for_each(p_val.begin(), p_val.end(),
-            [&pIdx, &pvec, &idx](double& val) {
-            reinterpret_cast<double*>(pvec.at(pIdx++).request().ptr)[idx] = val;
-        });
-    }
 
+        // Objective
+        try {
+        reinterpret_cast<double*>(jdot.ptr)[idx] =
+                (std::any_cast<std::vector<double>>(obj_val)).at(0);
+        } catch (...) {
+            std::cout << "compute() objective any_cast failed!" << std::endl;
+        }
+
+        // State time derivatives
+        for_each(EXEC_POLICY_UNSEQ, x_idx.cbegin(), x_idx.cend(),
+            [&dx_val, &xdot, &idx](const size_t& j) {
+            reinterpret_cast<double*>(xdot.at(j).ptr)[idx] = dx_val.at(j);
+        });
+
+        // Path constraints
+        for_each(EXEC_POLICY_UNSEQ, p_idx.cbegin(), p_idx.cend(),
+            [&p_val, &path, &idx](const size_t& j) {
+            reinterpret_cast<double*>(path.at(j).ptr)[idx] = p_val.at(j);
+        });
+    });
     // Store results in the dictionary output
     kv["jdot"] = jdotvec;
     for (size_t j(0); j < ptr->getNStates(); j++)
         kv[getDerivName(j).c_str()] = xdotvec.at(j);
     for (size_t j(0); j < ptr->getConstraints()->size(); j++)
-        kv[getPathConstraintName(j).c_str()] = pvec.at(j);
+        kv[getPathConstraintName(j).c_str()] = pathvec.at(j);
     return kv;
 }
 
 py::dict eDymos::dymosComputePartials(void* handle, py::dict inputs) {
     py::dict kv;
 
-    std::vector<py::buffer_info> xbufs, ubufs;
-
     eDymos* ptr = reinterpret_cast<eDymos*>(handle);
-    double dt = ptr->getDt();
+    const double dt = ptr->getDt();
 
     // Extract variable values
-    py::array_t<double> tvec = inputs["t"].cast<py::array_t<double>>();
 
-    py::buffer_info tbuf = tvec.request();
+    // Time
+    py::buffer_info tbuf = (inputs["t"].cast<py::array_t<double>>()).request();
 
-    for (size_t j(0); j < ptr->getNStates(); j++) {
-        py::array_t<double> xvec = inputs[getStateName(j).c_str()]
-                                      .cast<py::array_t<double>>();
-        xbufs.push_back(xvec.request());
-    }
+    // States
+    std::vector<py::buffer_info> xbufs;
+    std::vector<size_t> x_idx(ptr->getNStates());
+    std::iota(x_idx.begin(), x_idx.end(), 0);
+    for (size_t j(0); j < ptr->getNStates(); j++)
+        xbufs.push_back((inputs[getStateName(j).c_str()]
+                                .cast<py::array_t<double>>()).request());
 
-    for (size_t j(0); j < ptr->getNControls(); j++) {
-        py::array_t<double> uvec = inputs[getControlName(j).c_str()]
-                                      .cast<py::array_t<double>>();
-        ubufs.push_back(uvec.request());
-    }
+    // Controls
+    std::vector<py::buffer_info> ubufs;
+    std::vector<size_t> u_idx(ptr->getNControls());
+    std::iota(u_idx.begin(), u_idx.end(), x_idx.back() + 1u);
+    for (size_t j(0); j < ptr->getNControls(); j++)
+        ubufs.push_back((inputs[getControlName(j).c_str()]
+                                .cast<py::array_t<double>>()).request());
 
     // Declare output arrays
+
+    // Objective partial derivative array
     std::vector<py::array_t<double>> jdotvecs;
-    for (size_t j(0); j < ptr->getNStates() + ptr->getNControls(); j++)
+    std::vector<py::buffer_info> jdot;
+    for (size_t j(0); j < (ptr->getNStates() + ptr->getNControls()); j++) {
         jdotvecs.push_back(
                 py::array_t<double>(    // @suppress("Symbol is not resolved")
                         tbuf.size));
+        jdot.push_back(jdotvecs.back().request());
+    }
+    auto jdot_it = jdot.begin();
+
+    // State time-derivative partial derivative arrays
     std::vector<py::array_t<double>> xdotvec;
+    std::vector<py::buffer_info> xdot;
     for (size_t j(0);
             j < ptr->getNStates() * (ptr->getNStates() + ptr->getNControls());
-                j++)
+                j++) {
         xdotvec.push_back(
                 py::array_t<double>(    // @suppress("Symbol is not resolved")
-                    tbuf.size));
-    std::vector<py::array_t<double>> pvec;
+                        tbuf.size));
+        xdot.push_back(xdotvec.back().request());
+    }
+    auto xdot_it = xdot.begin();
+
+    // Path constraint partial derivative arrays
+    std::vector<size_t> p_idx(ptr->getConstraints()->size());
+    std::iota(p_idx.begin(), p_idx.end(), 0);
+    std::vector<py::array_t<double>> pathvec;
+    std::vector<py::buffer_info> path;
     for (size_t j(0); j < ptr->getConstraints()->size() * (ptr->getNStates()
-                    + ptr->getNControls()); j++)
-        pvec.push_back(
+                    + ptr->getNControls()); j++) {
+        pathvec.push_back(
                 py::array_t<double>(    // @suppress("Symbol is not resolved")
                         tbuf.size));
+        path.push_back(pathvec.back().request());
+    }
+    auto path_it = path.begin();
 
-    for (size_t idx(0); idx < tbuf.shape[0]; idx++) {
-        scalar_t obj_val;
-        vector_t x, u;
-        std::vector<double> obj;
-        std::vector<std::vector<double>> dx, p;
+    // Compute values for each time index
+    std::vector<size_t> t_idx(tbuf.shape[0]);
+    std::iota(t_idx.begin(), t_idx.end(), 0);
+    for_each(EXEC_POLICY_UNSEQ, t_idx.begin(), t_idx.end(),
+        [&](const size_t& idx) {
         // Set variables for callbacks
+        // Time
         scalar_t t = reinterpret_cast<double *>(tbuf.ptr)[idx];
 
-        for_each(xbufs.begin(), xbufs.end(), [&x, &idx](py::buffer_info& xbuf) {
-           x.push_back(reinterpret_cast<double *>(xbuf.ptr)[idx]);
-        });
-        for_each(ubufs.begin(), ubufs.end(), [&u, &idx](py::buffer_info& ubuf) {
-           u.push_back(reinterpret_cast<double *>(ubuf.ptr)[idx]);
+        // States
+        vector_t x(ptr->getNStates());
+        std::transform(EXEC_POLICY_UNSEQ,
+                xbufs.begin(), xbufs.end(), x.begin(),
+            [&idx](py::buffer_info& xbuf) -> scalar_t {
+            return (reinterpret_cast<double *>(xbuf.ptr)[idx]);
         });
 
-        // Call callbacks for calculating computes
+        // Controls
+        vector_t u(ptr->getNControls());
+        std::transform(EXEC_POLICY_UNSEQ,
+                ubufs.begin(), ubufs.end(), u.begin(),
+            [&idx](py::buffer_info& ubuf) -> scalar_t {
+            return (reinterpret_cast<double *>(ubuf.ptr)[idx]);
+        });
+
+        // Use user lambda expressions to calculate Dymos compute() values
+
         // Objective function
+        std::vector<double> obj;
         vector_t params = {std::string()};
         std::vector<std::string> pnames = {std::string("partials")};
-        obj_val = (*ptr->_objective)(x, u, params, pnames, t, dt);
+        scalar_t obj_val = (*ptr->_objective)(x, u, params, pnames, t, dt);
         try {
-             obj = std::any_cast<std::vector<double>>(obj_val);
+            obj = std::any_cast<std::vector<double>>(obj_val);
         } catch (...) {
-            std::cout << "Error casting the objective value" << std::endl;
+            std::cout << "Error casting objective for compute_partials()"
+                    << std::endl;
         }
+
         // State time derivatives
-        for_each(ptr->getGradient()->begin(), ptr->getGradient()->end(),
-            [&x, &u, &t, &dt, &dx](f_t* grad) {
-                scalar_t val;
-                vector_t params = {std::string()};
-                std::vector<std::string> pnames = {std::string("partials")};
-                val = (*grad)(x, u, params, pnames, t, dt);
-                try {
-                    dx.push_back(std::any_cast<std::vector<double>>(val));
-                } catch (...) {
-                    std::cout << "Error casting the state derivatives"
-                                << std::endl;
-                }
+        std::vector<std::vector<double>> dx(ptr->getGradient()->size());
+        std::transform(EXEC_POLICY_UNSEQ,
+                ptr->getGradient()->cbegin(), ptr->getGradient()->cend(),
+                dx.begin(),
+            [&x, &u, &t, &dt, &dx](const f_t* grad) -> std::vector<double> {
+            scalar_t val;
+            vector_t params = {std::string()};
+            std::vector<std::string> pnames = {std::string("partials")};
+            val = (*grad)(x, u, params, pnames, t, dt);
+            try {
+                return(std::any_cast<std::vector<double>>(val));
+            } catch (...) {
+                std::cout << "Error casting state for compute_partials()"
+                        << std::endl;
+            }
+            std::vector<double> empty;
+            return (empty);
         });
+
         // Path Constraints
-        for_each(ptr->getConstraints()->begin(), ptr->getConstraints()->end(),
-            [&x, &u, &t, &dt, &p](f_t* con) {
-                scalar_t val;
-                vector_t params = {std::string()};
-                std::vector<std::string> pnames = {std::string("partials")};
-                val = (*con)(x, u, params, pnames, t, dt);
-                try {
-                    p.push_back(std::any_cast<std::vector<double>>(val));
-                } catch (...) {
-                    std::cout << "Error casting the path constraints"
-                            << std::endl;
-                }
+        std::vector<std::vector<double>> p(ptr->getConstraints()->size());
+        std::transform(EXEC_POLICY_UNSEQ,
+                ptr->getConstraints()->cbegin(), ptr->getConstraints()->cend(),
+                p.begin(),
+            [&x, &u, &t, &dt, &p](const f_t* con)-> std::vector<double> {
+            scalar_t val;
+            vector_t params = {std::string()};
+            std::vector<std::string> pnames = {std::string("partials")};
+            val = (*con)(x, u, params, pnames, t, dt);
+            try {
+                return (std::any_cast<std::vector<double>>(val));
+            } catch (...) {
+                std::cout << "Error casting path for compute_partials()"
+                        << std::endl;
+            }
+            std::vector<double> empty;
+            return (empty);
         });
 
-        size_t k_jdot(0), k_dx(0), k_p(0);
-        // Pass the partials wrt to states to numpy array outputs
-        for (size_t j(0); j < ptr->getNStates(); j++) {
-            // Set objective partials
-            reinterpret_cast<double*>(
-                    jdotvecs.at(k_jdot++).request().ptr)[idx] = obj.at(j);
-            // Set state derivative partials
-            for_each(dx.begin(), dx.end(),
-                [&idx, &j, &k_dx, &xdotvec](std::vector<double> &val){
-                reinterpret_cast<double*>(xdotvec.at(k_dx++).request().ptr)[idx]
-                        = val.at(j);
-            });
-            // Set path constraint partials
-            for_each(p.begin(), p.end(),
-                [&idx, &j, &k_p, &pvec](std::vector<double> &val){
-                reinterpret_cast<double*>(pvec.at(k_p++).request().ptr)[idx] =
-                            val.at(j);
-            });
-        }
+        auto obj_it = obj.begin();
+        auto dx_it = dx.begin();
+        auto p_it = p.begin();
+        // Partials with respect to the state
+        for_each(EXEC_POLICY_UNSEQ, x_idx.cbegin(), x_idx.cend(),
+            [&idx, &x_idx, &p_idx, &jdot_it, &obj_it, &dx_it, &xdot_it, &p_it,
+             &path_it, &ptr](const size_t& j) {
+            // Partial of objective wrt to state j
+            reinterpret_cast<double*>((jdot_it + j)->ptr)[idx] = *(obj_it + j);
 
-        // Pass the partials wrt to the controls to numpy array outputs
-        for (size_t j(ptr->getNStates());
-                j < (ptr->getNControls() + ptr->getNStates()); j++) {
-            // Set objective partials
-            reinterpret_cast<double*>(jdotvecs.at(k_jdot++).request().ptr)[idx]=
-                    obj.at(j);
-            // Set state derivative partials
-            for_each(dx.begin(), dx.end(),
-                [&idx, &j, &k_dx, &xdotvec](std::vector<double> &val){
-                reinterpret_cast<double*>(xdotvec.at(k_dx++).request().ptr)[idx]
-                        = val.at(j);
+            // Partial of state time derivatives wrt state j
+            const size_t k_x = j * ptr->getNStates();
+            for_each(EXEC_POLICY_UNSEQ, x_idx.cbegin(), x_idx.cend(),
+                    [&idx, &j, &k_x, &xdot_it, &dx_it, &ptr](const size_t& k) {
+                reinterpret_cast<double*>((xdot_it + k_x + k)->ptr)[idx] =
+                        (dx_it + k)->at(j);
             });
-            // Set path constraint partials
-            for_each(p.begin(), p.end(),
-                [&idx, &j, &k_p, &pvec](std::vector<double> &val){
-                reinterpret_cast<double*>(pvec.at(k_p++).request().ptr)[idx] =
-                        val.at(j);
+
+            // Partial of path constraint k wrt state j
+            const size_t k_p = j * ptr->getConstraints()->size();
+            for_each(EXEC_POLICY_UNSEQ, p_idx.cbegin(), p_idx.cend(),
+                    [&idx, &j, &k_p, &path_it, &p_it, &ptr](const size_t& k) {
+                reinterpret_cast<double*>((path_it + k_p + k)->ptr)[idx] =
+                        (p_it + k)->at(j);
             });
-        }
-    }
+        });
+
+        const size_t j_dx = ptr->getNStates() * ptr->getNStates();
+        const size_t j_dp = ptr->getNStates() * ptr->getConstraints()->size();
+        // Partials with respect to the control
+        for_each(EXEC_POLICY_UNSEQ, u_idx.cbegin(), u_idx.cend(),
+            [&idx, &x_idx, &p_idx, &jdot_it, &obj_it, &dx_it, &p_it,
+             &j_dx, &j_dp, &xdot_it, &path_it, &ptr] (const size_t &j) {
+            // Partial of objective wrt to control j
+            reinterpret_cast<double*>((jdot_it + j)->ptr)[idx] = *(obj_it + j);
+
+            // Partial of state time derivative k wrt control j
+            const size_t k_u = (j - ptr->getNStates()) * ptr->getNStates();
+            for_each(EXEC_POLICY_UNSEQ, x_idx.cbegin(), x_idx.cend(),
+                    [&idx, &j, &j_dx, &k_u, &xdot_it, &dx_it](const size_t& k) {
+                reinterpret_cast<double*>((xdot_it + j_dx + k_u + k)->ptr)[idx]
+                        = (dx_it + k)->at(j);
+            });
+
+            // Partial of path constraint k wrt control j
+            const size_t k_p = (j - ptr->getNStates()) *
+                    ptr->getConstraints()->size();
+            for_each(EXEC_POLICY_UNSEQ, p_idx.cbegin(), p_idx.cend(),
+                    [&idx, &j, &j_dp, &k_p, &path_it, &p_it](const size_t& k) {
+                reinterpret_cast<double*>((path_it + j_dp + k_p + k)->ptr)[idx]
+                        = (p_it + k)->at(j);
+            });
+        });
+    });
 
 
     // Store results in the dictionary output
@@ -331,7 +451,7 @@ py::dict eDymos::dymosComputePartials(void* handle, py::dict inputs) {
             kv[(getDerivName(k) + "_" + name).c_str()] = xdotvec.at(dx_iter++);
         for (size_t k(0); k < ptr->getConstraints()->size(); k++)
             kv[(getPathConstraintName(k)  + "_" + name).c_str()] =
-                    pvec.at(p_iter++);
+                    pathvec.at(p_iter++);
     }
     for (size_t j(0); j < ptr->getNControls(); j++) {
         std::string name = getControlName(j);
@@ -340,7 +460,7 @@ py::dict eDymos::dymosComputePartials(void* handle, py::dict inputs) {
             kv[(getDerivName(k) + "_" + name).c_str()] = xdotvec.at(dx_iter++);
         for (size_t k(0); k < ptr->getConstraints()->size(); k++)
             kv[(getPathConstraintName(k)  + "_" + name).c_str()] =
-                    pvec.at(p_iter++);
+                    pathvec.at(p_iter++);
     }
     return kv;
 }
