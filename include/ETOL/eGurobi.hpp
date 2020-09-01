@@ -89,6 +89,23 @@ class eGurobi : public TrajectoryOptimizer{
             const size_t& tIdx);
 
 
+    void setDt(double dt);
+    void setNSteps(const size_t nSteps);
+    void setXvartype(const state_var_t &xvartype);
+    void setX0(const state_t& x0);
+    void setXf(const state_t& x0);
+    void setXtol(const state_t &xtol);
+    void setXupper(const state_t &xupper);
+    void setXlower(const state_t &xlower);
+    void setXrhorizon(const size_t nx4dyn);
+    void setUvartype(const state_var_t &uvartype);
+    void setUupper(const state_t &uupper);
+    void setUlower(const state_t &ulower);
+    void setUrhorizon(const size_t nu4dyn);
+    void setObjective(f_t* objective);
+    void setGradient(std::vector<f_t*> gradient);
+    void setConstraints(std::vector<f_t*> constraints);
+
 
  protected:
     // Protected data
@@ -98,6 +115,15 @@ class eGurobi : public TrajectoryOptimizer{
     vector_t _params;                   /**< Path constraint configs */
     std::vector<std::string> _pnames;   /**< Path constraint names */
     std::atomic<size_t> _nConstr;       /**< Number of path constraints */
+    bool x0_changed_;                   /**< X0 change flag */
+    bool xf_changed_;                   /**< Xf change flag */
+    bool reset_;                        /**< Reset flag */
+    /** Initial state constraint equation names */
+    std::vector<std::string> _x0_constraint_names;
+    /** Goal state constraint equation names */
+    std::vector<std::string> _xf_upper_constraint_names;
+    std::vector<std::string> _xf_lower_constraint_names;
+
 
     // Protected functions
     /**
@@ -177,6 +203,9 @@ class eGurobi : public TrajectoryOptimizer{
      * @brief Get the trajectory results from the Gurobi model
      */
     void getTraj();
+
+    void changeX0();
+    void changeXf();
 };
 
 } /* namespace ETOL */

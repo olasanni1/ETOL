@@ -34,7 +34,8 @@ constexpr std::execution::unsequenced_policy EXEC_POLICY_UNSEQ{};
 
 eGurobi::eGurobi()
     : eGurobi::TrajectoryOptimizer(), env_(GRBEnv()), model_(GRBModel(env_)),
-      _nConstr(ATOMIC_VAR_INIT(0)), _eGRB(NULL)  {
+      _nConstr(ATOMIC_VAR_INIT(0)), _eGRB(NULL), x0_changed_(true),
+      xf_changed_(true), reset_(true) {
     this->_env = &env_;
     this->_model = &model_;
 }
@@ -90,13 +91,24 @@ void eGurobi::setup() {
     assert(this->getXvartype().size() == this->getNStates());
 
     try {
-        this->_model->reset();
-        this->createVars();
-        this->addX0();
-        this->addXf();
-        this->addDyn();
-        this->addConstr();
-        this->addObj();
+        if (reset_) {
+            this->model_.reset();
+            this->_nConstr = 0;
+            this->createVars();
+            this->addX0();
+            this->addXf();
+            this->addDyn();
+            this->addConstr();
+            this->addObj();
+        } else {
+            if (x0_changed_) {
+                this->changeX0();
+            }
+            if (xf_changed_) {
+                this->changeXf();
+            }
+        }
+        reset_ = x0_changed_ = xf_changed_ = false;
     } catch(GRBException& e) {
         this->_eGRB = &e;
         this->errorHandler();
@@ -293,15 +305,18 @@ void eGurobi::addX0() {
     try {
         GRBLinExpr expr = GRBLinExpr();
         double coeff = 1.0;
+        this->_x0_constraint_names.clear();
         for (size_t i(0); i < this->getRhorizon(); i++) {
             for (size_t j(0); j < this->getNStates(); j++) {
                 if (!std::isnan(this->getX0().at(j))) {
+                    this->_x0_constraint_names.push_back(
+                            "c" + std::to_string((size_t)(this->_nConstr++)));
                     GRBVar var = this->_model->getVarByName(getStateName(i, j));
                     GRBVar* varptr = &var;
                     expr.addTerms(&coeff, varptr, 1);
                     this->_model->addConstr(
                             expr, GRB_EQUAL, this->getX0().at(j),
-                            "c" + std::to_string((size_t)(this->_nConstr++)));
+                            this->_x0_constraint_names.back());
                     expr.clear();
                 }
             }
@@ -318,18 +333,24 @@ void eGurobi::addXf() {
     double coeff = 1.0;
     size_t i = this->getNSteps();
     std::string n(std::to_string(this->getNSteps()) + "_");
+    this->_xf_upper_constraint_names.clear();
+    this->_xf_lower_constraint_names.clear();
     try {
         for (size_t j(0); j < this->getNStates(); j++) {
             if (!std::isnan(this->getXf().at(j))) {
+                this->_xf_upper_constraint_names.push_back(
+                            "c" + std::to_string((size_t)(this->_nConstr++)));
+                this->_xf_lower_constraint_names.push_back(
+                            "c" + std::to_string((size_t)(this->_nConstr++)));
                 GRBVar var = this->_model->getVarByName(
                         getStateName(i, j));
                 expr.addTerms(&coeff, &var, 1);
                 this->_model->addConstr(expr, GRB_LESS_EQUAL,
                         this->getXf().at(j) + this->getXtol().at(j),
-                        "c" + std::to_string((size_t)(this->_nConstr++)));
+                        this->_xf_upper_constraint_names.back());
                 this->_model->addConstr(expr, GRB_GREATER_EQUAL,
-                            this->getXf().at(j) - this->getXtol().at(j),
-                            "c" + std::to_string((size_t)(this->_nConstr++)));
+                        this->getXf().at(j) - this->getXtol().at(j),
+                        this->_xf_lower_constraint_names.back());
                 expr.clear();
             }
         }
@@ -445,5 +466,185 @@ void eGurobi::getTraj() {
         errorHandler();
     }
 }
+
+void eGurobi::changeX0() {
+    auto it = this->getX0().begin();
+    try {
+        for_each(_x0_constraint_names.cbegin(), _x0_constraint_names.cend(),
+                [this, &it](const std::string& name) {
+            this->model_.getConstrByName(name).set(GRB_DoubleAttr_RHS, *(it++));
+            this->model_.update();
+        });
+    } catch (GRBException& ex) {
+        this->_eGRB = &ex;
+        errorHandler();
+    }
+}
+
+void eGurobi::changeXf() {
+    auto it_xf = this->getXf().begin();
+    auto it_xtol = this->getXtol().begin();
+    for_each(_xf_upper_constraint_names.cbegin(),
+            _xf_upper_constraint_names.cend(),
+        [this, &it_xf, &it_xtol](const std::string& name) {
+        this->model_.getConstrByName(name).set(GRB_DoubleAttr_RHS,
+                *(it_xf++) + *(it_xtol++));
+        this->model_.update();
+    });
+    it_xf = this->getXf().begin();
+    it_xtol = this->getXtol().begin();
+    for_each(_xf_lower_constraint_names.cbegin(),
+            _xf_lower_constraint_names.cend(),
+        [this, &it_xf, &it_xtol](const std::string& name) {
+        this->model_.getConstrByName(name).set(GRB_DoubleAttr_RHS,
+                *(it_xf++) - *(it_xtol++));
+        this->model_.update();
+    });
+}
+
+// Overriding Setters
+
+void eGurobi::setDt(double dt) {
+    if (this->getDt() != dt) {
+        reset_ = true;
+        TrajectoryOptimizer::setDt(dt);
+    }
+}
+
+void eGurobi::setNSteps(const size_t nSteps) {
+    if (this->getNSteps() != nSteps) {
+        reset_ = true;
+        TrajectoryOptimizer::setNSteps(nSteps);
+    }
+}
+
+void eGurobi::setXvartype(const state_var_t &xvartype) {
+    if (!std::equal(this->getXvartype().cbegin(),
+            this->getXvartype().cend(), xvartype.cbegin())) {
+        reset_ = true;
+        TrajectoryOptimizer::setXvartype(xvartype);
+    }
+}
+
+void eGurobi::setX0(const state_t& x0) {
+    // Skip comparison and reset if array size is different
+    if (this->getX0().size() == x0.size()) {
+        if (!std::equal(this->getX0().cbegin(), this->getX0().cend(),
+                x0.cbegin())) {
+            // Only change the xf values in the Gurobi model
+            x0_changed_ = true;
+            TrajectoryOptimizer::setX0(x0);
+        }
+        return;
+    }
+    // Vector size change requires a reset
+    TrajectoryOptimizer::setX0(x0);
+    reset_ = true;
+    return;
+}
+
+void eGurobi::setXf(const state_t& xf) {
+    // Skip comparison and reset if array size is different
+    if (this->getXf().size() == xf.size()) {
+        if (!std::equal(this->getXf().cbegin(), this->getXf().cend(),
+                xf.cbegin())) {
+            // Only change the xf values in the Gurobi model
+            xf_changed_ = true;
+            TrajectoryOptimizer::setXf(xf);
+        }
+        return;
+    }
+    // Vector size change requires a reset
+    TrajectoryOptimizer::setXf(xf);
+    reset_ = true;
+    return;
+}
+
+void eGurobi::setXtol(const state_t &xtol) {
+    // Skip comparison and reset if array size is different
+    if (this->getXtol().size() == xtol.size()) {
+        if (!std::equal(this->getXtol().cbegin(), this->getXtol().cend(),
+                xtol.cbegin())) {
+            // Only change the xf values in the Gurobi model
+            xf_changed_ = true;
+            TrajectoryOptimizer::setXtol(xtol);
+        }
+        return;
+    }
+    // Vector size change requires a reset
+    TrajectoryOptimizer::setXtol(xtol);
+    reset_ = true;
+    return;
+}
+
+void eGurobi::setXupper(const state_t &xupper) {
+    if (!std::equal(this->getXupper().cbegin(),
+            this->getXupper().cend(), xupper.cbegin())) {
+        reset_ = true;
+        TrajectoryOptimizer::setXupper(xupper);
+    }
+}
+
+void eGurobi::setXlower(const state_t &xlower) {
+    if (!std::equal(this->getXlower().cbegin(),
+            this->getXlower().cend(), xlower.cbegin())) {
+        reset_ = true;
+        TrajectoryOptimizer::setXlower(xlower);
+    }
+}
+
+void eGurobi::setXrhorizon(const size_t nx4dyn) {
+    if (this->getXrhorizon() != nx4dyn) {
+        reset_ = true;
+        TrajectoryOptimizer::setXrhorizon(nx4dyn);
+    }
+}
+
+void eGurobi::setUvartype(const state_var_t &uvartype) {
+    if (!std::equal(this->getUvartype().cbegin(),
+            this->getUvartype().cend(), uvartype.cbegin())) {
+        reset_ = true;
+        TrajectoryOptimizer::setUvartype(uvartype);
+    }
+}
+
+void eGurobi::setUupper(const state_t &uupper) {
+    if (!std::equal(this->getUupper().cbegin(),
+            this->getUupper().cend(), uupper.cbegin())) {
+        reset_ = true;
+        TrajectoryOptimizer::setUupper(uupper);
+    }
+}
+
+void eGurobi::setUlower(const state_t &ulower) {
+    if (!std::equal(this->getUlower().cbegin(),
+            this->getUlower().cend(), ulower.cbegin())) {
+        reset_ = true;
+        TrajectoryOptimizer::setUlower(ulower);
+    }
+}
+
+void eGurobi::setUrhorizon(const size_t nu4dyn) {
+    if (this->getUrhorizon() != nu4dyn) {
+        reset_ = true;
+        TrajectoryOptimizer::setUrhorizon(nu4dyn);
+    }
+}
+
+void eGurobi::setObjective(f_t* objective) {
+    reset_ = true;
+    TrajectoryOptimizer::setObjective(objective);
+}
+
+void eGurobi::setGradient(std::vector<f_t*> gradient) {
+    reset_ = true;
+    TrajectoryOptimizer::setGradient(gradient);
+}
+
+void eGurobi::setConstraints(std::vector<f_t*> constraints) {
+    reset_ = true;
+    TrajectoryOptimizer::setConstraints(constraints);
+}
+
 
 }  /* namespace ETOL */
