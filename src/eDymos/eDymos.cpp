@@ -413,7 +413,7 @@ void eDymos::setAlg() {
     _alg.attr("driver").attr("options")["print_results"] = false;
     if (_alg.attr("driver").attr("options")["optimizer"].cast<std::string>()
                 == "SNOPT") {
-        _alg.attr("driver").attr("options")["user_teriminate_signal"] =
+        _alg.attr("driver").attr("options")["user_terminate_signal"] =
                     nullptr;
         _alg.attr("driver").attr(
             "opt_settings")["Major iterations limit"] = getMaxIter();
