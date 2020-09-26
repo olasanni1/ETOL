@@ -487,14 +487,15 @@ void eDymos::setProb() {
     for (size_t j(0); j < this->getNStates(); j++)  {
         _prob.attr("add_state")(getStateName(j).c_str(),
                 "rate_source"_a = getDerivName(j).c_str(),
-                "lower"_a = *(it_xlo),
-                "upper"_a = *(it_xup),
                 "fix_initial"_a = true,
                 "fix_final"_a = false,
                 "solve_segments"_a = true,
                 "targets"_a = getStateName(j).c_str());
-        //  _prob.attr("add_boundary_constraint")(getStateName(j).c_str(),
-        //        "loc"_a = "initial", "equals"_a = *(it_x0));
+        _prob.attr("add_path_constraint")(
+                "name"_a = getStateName(j).c_str(),
+                "upper"_a = *(it_xup),
+                "lower"_a = *(it_xlo),
+                "units"_a = nullptr);
         _prob.attr("add_boundary_constraint")(getStateName(j).c_str(),
                         "loc"_a = "final",
                         "upper"_a = *(it_xf) + *(it_xtol),
@@ -508,7 +509,7 @@ void eDymos::setProb() {
     for (size_t j(0); j < this->getNControls(); j++) {
         _prob.attr("add_control")(getControlName(j).c_str(),
                 "continuity"_a = true,
-                "rate_continuity"_a = true,
+                "rate_continuity"_a = false,
                 "lower"_a = *(it_ulo++),
                 "upper"_a = *(it_uup++),
                 "targets"_a = getControlName(j).c_str());
