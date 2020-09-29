@@ -395,11 +395,11 @@ void eGurobi::addDyn() {
 
 void eGurobi::addObj() {
     try {
-        std::vector<size_t> t_idx(getNSteps());
+        std::vector<size_t> t_idx(getNSteps() + 1);
 
         std::iota(t_idx.begin(), t_idx.end(), 0);
 
-        std::vector<GRBLinExpr> linExpr(getNSteps());
+        std::vector<GRBLinExpr> linExpr(getNSteps() + 1);
 
         std::transform(EXEC_POLICY_UNSEQ, t_idx.begin(), t_idx.end(),
                 linExpr.begin(), [this](const size_t& i) -> GRBLinExpr {
