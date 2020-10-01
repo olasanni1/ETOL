@@ -547,7 +547,7 @@ void eDymos::setAlg() {
         _alg.attr("driver").attr(
             "opt_settings")["Major iterations limit"] = getMaxIter();
         _alg.attr("driver").attr(
-            "opt_settings")["Minor iterations limit"] = getMaxIter();
+            "opt_settings")["Minor iterations limit"] = 10000;
         _alg.attr("driver").attr("opt_settings")["Verify level"] = 0;
     } else if (_alg.attr("driver")
             .attr("options")["optimizer"].cast<std::string>() == "IPOPT")  {
@@ -626,9 +626,9 @@ void eDymos::setProb() {
                 "lower"_a = *(it_xlo),
                 "units"_a = nullptr);
         _prob.attr("add_boundary_constraint")(getStateName(j).c_str(),
-                        "loc"_a = "final",
-                        "upper"_a = *(it_xf) + *(it_xtol),
-                        "lower"_a = *(it_xf) - *(it_xtol));
+                "loc"_a = "final",
+                "upper"_a = *(it_xf) + *(it_xtol),
+                "lower"_a = *(it_xf) - *(it_xtol));
         it_x0++; it_xf++; it_xtol++; it_xlo++; it_xup++;
     }
 
@@ -637,11 +637,16 @@ void eDymos::setProb() {
     state_t::iterator it_uup = this->getUupper().begin();
     for (size_t j(0); j < this->getNControls(); j++) {
         _prob.attr("add_control")(getControlName(j).c_str(),
-                "continuity"_a = true,
+                "continuity"_a = false,
                 "rate_continuity"_a = false,
                 "lower"_a = *(it_ulo++),
                 "upper"_a = *(it_uup++),
                 "targets"_a = getControlName(j).c_str());
+        _prob.attr("add_boundary_constraint")(getControlName(j).c_str(),
+                "loc"_a = "final",
+                "upper"_a = 0.,
+                "lower"_a = 0.,
+                "units"_a = nullptr);
        _prob.attr("add_timeseries_output")("name"_a = getControlName(j).c_str(),
                "units"_a = nullptr);
     }
