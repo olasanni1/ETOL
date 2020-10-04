@@ -13,10 +13,20 @@
  * trajectory optimization problem as a Nonlinear Linear Programming (NLP) type.
  ******************************************************************************/
 
-#include <ETOL/ePSOPT.hpp>
 #include <iostream>
-
+#include <execution>
+#include <numeric>
+#include <ETOL/ePSOPT.hpp>
 namespace ETOL {
+
+#ifdef PSTL_USE_PARALLEL_POLICIES
+constexpr std::execution::parallel_policy EXEC_POLICY_SEQ{};
+constexpr std::execution::parallel_unsequenced_policy EXEC_POLICY_UNSEQ{};
+#else
+constexpr std::execution::sequenced_policy EXEC_POLICY_SEQ{};
+constexpr std::execution::unsequenced_policy EXEC_POLICY_UNSEQ{};
+#endif
+
 // Constructors
 /**
  * Pointer to this class' object is stored in PSOPT's problem data structure
@@ -47,7 +57,6 @@ void ePSOPT::setup() {
     if (this->_problem.phases(1).guess.controls.rows() < 1)
         this->_problem.phases(1).guess.controls = ::zeros(getNStates(),
                                                             getNSteps()+1);
-
     if (this->_problem.phases(1).guess.states.rows() < 1)
         this->_problem.phases(1).guess.states = ::zeros(getNControls(),
                                                         getNSteps()+1);
@@ -128,7 +137,6 @@ void ePSOPT::addBounds() {
             ulow(getUlower().begin()), uup(getUupper().begin()),
             x0(getX0().begin()), xf(getXf().begin()), xtol(getXtol().begin());
 
-
     size_t offset = this->getNStates();
     for (size_t i= 0; i < this->getNStates(); i++) {
         _problem.phases(1).bounds.lower.states(i) = *(xlow++);
@@ -138,7 +146,7 @@ void ePSOPT::addBounds() {
         _problem.phases(1).bounds.upper.events(i) = *(x0++) + *xtol;
 
         _problem.phases(1).bounds.lower.events(i+offset) = *xf - *xtol;
-        _problem.phases(1).bounds.upper.events(i+offset)=*(xf++)+*(xtol++);
+        _problem.phases(1).bounds.upper.events(i+offset) = *(xf++) + *(xtol++);
     }
     for (size_t i= 0; i < this->getNControls(); i++) {
         _problem.phases(1).bounds.lower.controls(i) = *(ulow++);
@@ -155,30 +163,40 @@ void ePSOPT::addBounds() {
 }
 
 void ePSOPT::getTraj() {
+    MatrixXd tmat         = _solution.get_time_in_phase(1);
     MatrixXd xmat         = _solution.get_states_in_phase(1);
     MatrixXd umat         = _solution.get_controls_in_phase(1);
-    MatrixXd tmat         = _solution.get_time_in_phase(1);
 
     traj_t* xtraj = this->getXtraj();
-    xtraj->clear();
-
     traj_t* utraj = this->getUtraj();
-    utraj->clear();
 
-    for (size_t j(0); j < tmat.cols(); j++) {
-        double t;
-        state_t x, u;
+    xtraj->resize(tmat.cols());
+    utraj->resize(tmat.cols());
 
-        t = tmat(1, j);
+    std::vector<size_t> t_idx(tmat.cols());
+    std::iota(t_idx.begin(), t_idx.end(), 0);
+    std::for_each(EXEC_POLICY_UNSEQ, t_idx.begin(), t_idx.end(),
+            [&tmat, &xmat, &umat, &xtraj, &utraj](const size_t &j) {
+        double t = tmat(1, j);
+        state_t x(xmat.rows()), u(umat.rows());
 
-        for (size_t i(0); i < xmat.rows(); i++)
-            x.push_back(xmat(i, j));
-        xtraj->push_back(traj_elem_t(t, x));
+        std::vector<size_t> x_idx(xmat.rows());
+        std::iota(x_idx.begin(), x_idx.end(), 0);
+        std::transform(EXEC_POLICY_UNSEQ, x_idx.cbegin(), x_idx.cend(),
+                x.begin(), [&xmat, &j](const size_t &i){
+            return xmat(i, j);
+        });
 
-        for (size_t i(0); i < umat.rows(); i++)
-            u.push_back(umat(i, j));
-        utraj->push_back(traj_elem_t(t, u));
-    }
+        std::vector<size_t> u_idx(umat.rows());
+        std::iota(u_idx.begin(), u_idx.end(), 0);
+        std::transform(EXEC_POLICY_UNSEQ, u_idx.cbegin(), u_idx.cend(),
+                u.begin(), [&umat, &j](const size_t &i){
+            return umat(i, j);
+        });
+
+        xtraj->at(j) = traj_elem_t(t, x);
+        utraj->at(j) = traj_elem_t(t, u);
+    });
 }
 
 // PSOPT required functions !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
@@ -189,19 +207,28 @@ adouble ePSOPT::integrand_cost(adouble* states, adouble* controls,
     adouble f_val;
     scalar_t fout;
 
-    ePSOPT* ptr = reinterpret_cast<ePSOPT *>(
-                                                workspace->problem->user_data);
-    vector_t x, u;
+    ePSOPT* ptr = reinterpret_cast<ePSOPT *>(workspace->problem->user_data);
 
-    for (size_t i(0); i < ptr->getNStates(); i++)
-            x.push_back(&states[i]);
-    for (size_t i(0); i < ptr->getNControls(); i++)
-        u.push_back(&controls[i]);
+    vector_t x(ptr->getNStates());
+    std::vector<size_t> x_idx(ptr->getNStates());
+    std::iota(x_idx.begin(), x_idx.end(), 0);
+    std::transform(EXEC_POLICY_UNSEQ, x_idx.cbegin(), x_idx.cend(), x.begin(),
+            [&states](const size_t &i) -> scalar_t {
+        return(&states[i]);
+    });
+
+    vector_t u(ptr->getNControls());
+    std::vector<size_t> u_idx(ptr->getNControls());
+    std::iota(u_idx.begin(), u_idx.end(), 0);
+    std::transform(EXEC_POLICY_UNSEQ, u_idx.cbegin(), u_idx.cend(), u.begin(),
+            [&controls](const size_t &i) -> scalar_t {
+        return(&controls[i]);
+    });
+
     vector_t params = {std::string()};
     std::vector<std::string> pnames = {std::string("")};
-    fout = (*ptr->_objective)(x, u, params, pnames, time,
-                                ptr->getDt());
-     try {
+    fout = (*ptr->_objective)(x, u, params, pnames, time, ptr->getDt());
+    try {
         f_val = std::any_cast<adouble>(fout);
     } catch(std::bad_any_cast& e) {
         ptr->_eAny = &e;
@@ -218,17 +245,28 @@ adouble ePSOPT::integrand_cost(adouble* states, adouble* controls,
 void ePSOPT::dae(adouble* derivatives, adouble* path, adouble* states,
              adouble* controls, adouble* parameters, adouble& t,
              adouble* xad, int iphase, Workspace* workspace) {
-    scalar_t f_val, p_val;
-    vector_t x, u;
     ePSOPT* ptr = reinterpret_cast<ePSOPT *>(workspace->problem->user_data);
+    adouble *tval  = &t;
+    std::vector<std::string> pnames = {std::string("")};
+    vector_t params = {std::string()};
 
-    for (size_t i(0); i < ptr->getNStates(); i++)
-        x.push_back(&states[i]);
+    vector_t x(ptr->getNStates());
+    std::vector<size_t> x_idx(ptr->getNStates());
+    std::iota(x_idx.begin(), x_idx.end(), 0);
+    std::transform(EXEC_POLICY_UNSEQ, x_idx.cbegin(), x_idx.cend(), x.begin(),
+            [&states](const size_t &i) -> scalar_t {
+        return(&states[i]);
+    });
 
-    for (size_t i(0); i < ptr->getNControls(); i++)
-        u.push_back(&controls[i]);
+    vector_t u(ptr->getNControls());
+    std::vector<size_t> u_idx(ptr->getNControls());
+    std::iota(u_idx.begin(), u_idx.end(), 0);
+    std::transform(EXEC_POLICY_UNSEQ, u_idx.cbegin(), u_idx.cend(), u.begin(),
+            [&controls](const size_t &i) -> scalar_t {
+        return(&controls[i]);
+    });
 
-    for (size_t i(1); i< ptr->getXrhorizon(); i++) {
+    for (size_t i(1); i < ptr->getXrhorizon(); i++) {
         double delay = ptr->getDt()*i;
         for (int j(0); j < ptr->getNStates(); j++) {
             adouble state_prev[1];
@@ -237,7 +275,7 @@ void ePSOPT::dae(adouble* derivatives, adouble* path, adouble* states,
         }
     }
 
-    for (size_t i(1); i<= ptr->getUrhorizon(); i++) {
+    for (size_t i(1); i <= ptr->getUrhorizon(); i++) {
         double delay = ptr->getDt()*i;
         for (int j(1); j <= ptr->getNControls(); j++) {
             adouble control_prev[1];
@@ -247,27 +285,29 @@ void ePSOPT::dae(adouble* derivatives, adouble* path, adouble* states,
         }
     }
 
+    std::vector<size_t> p_idx(ptr->_constraints.size());
+    std::iota(p_idx.begin(), p_idx.end(), 0);
+    size_t j(0);
+
     try {
-        adouble *tval  = &t;
-        for (size_t i(0); i < ptr->getNStates(); i++) {
-            f_t* f = ptr->_gradient.at(i);
-            vector_t params = {std::string()};
-            std::vector<std::string> pnames = {std::string("")};
-            f_val = (*f)(x, u, params, pnames, tval, ptr->getDt());
-            adouble out;
-            out = std::any_cast<adouble>(f_val);
-            derivatives[i] = out;
-        }
-        size_t j(0);
-        for (size_t i(0); i < ptr->_constraints.size(); i++) {
-            f_t* p = ptr->_constraints.at(i);
-            vector_t params = {std::string()};
-            std::vector<std::string> pnames = {std::string("")};
-            p_val = (*p)(x, u, params, pnames, tval, ptr->getDt());
-            fout_psopt_t out = std::any_cast<fout_psopt_t>(p_val);
-            for (adouble val : out)
+        // Must be sequential for ADOLC
+        std::for_each(std::execution::seq, x_idx.cbegin(), x_idx.cend(),
+                [&derivatives, &ptr, &tval, &x, &u, &pnames, &params](
+                        const size_t &i) {
+            derivatives[i] = std::any_cast<adouble>(
+                    (**(ptr->_gradient.begin() + i))(
+                            x, u, params, pnames, tval, ptr->getDt()));
+        });
+        // Must be sequential for ADOLC
+        std::for_each(std::execution::seq, p_idx.cbegin(), p_idx.cend(),
+                [&ptr, &path, &tval, &x, &u, &pnames, &params, &j](
+                        const auto &i) {
+            fout_psopt_t fout = std::any_cast<fout_psopt_t>(
+                    (**(ptr->_constraints.begin() + i))(
+                            x, u, params, pnames, tval, ptr->getDt()));
+            for (auto &val : fout)
                 path[j++] = val;
-        }
+        });
     } catch(std::bad_any_cast& e) {
         ptr->_eAny = &e;
         cout << "Error in PSOPT DAE" << std::endl;
@@ -282,8 +322,7 @@ void ePSOPT::events(adouble* e, adouble* initial_states,
         adouble* final_states, adouble* parameters, adouble& t0, adouble& tf,
         adouble* xad, int iphase, Workspace* workspace) {
     size_t i(0), j(0);
-    ePSOPT* ptr = reinterpret_cast<ePSOPT *>(
-                                                workspace->problem->user_data);
+    ePSOPT* ptr = reinterpret_cast<ePSOPT *>(workspace->problem->user_data);
     for (; i < ptr->getNStates(); i++)
         e[ i ] = initial_states[i];
     for (; i < 2 * ptr->getNStates(); i++)

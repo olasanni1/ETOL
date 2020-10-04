@@ -14,9 +14,8 @@ if(PSOPT_FOUND)
   add_library(${PROJECT_NAME} STATIC ${PROJECT_NAME}.cpp)
 
   target_link_libraries(${PROJECT_NAME} 
-    PUBLIC TrajectoryOptimizer
+    PUBLIC TrajectoryOptimizer tbb 
     PRIVATE PSOPT PkgConfig::adolc PkgConfig::ipopt Eigen3::Eigen)
-  
   if(snopt7_FOUND)
     target_link_libraries(${PROJECT_NAME} PRIVATE gfortran PkgConfig::snopt7) 
   endif()
