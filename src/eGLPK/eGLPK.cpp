@@ -313,7 +313,7 @@ void eGLPK::createVars() {
 
             // varName_time#
             double t = i * this->getDt();
-            for (const auto& param : this->_parmaeters) {
+            for (const auto& param : this->_parameters) {
                 if ((t >= param.second.tStart) && (t <= param.second.tStop)) {
                     this->_var_cnt += 1;
                     this->_var_map.insert(std::pair<std::string, int>(

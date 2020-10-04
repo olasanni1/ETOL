@@ -6,7 +6,7 @@
  * @author Olatunde Sanni <olasanni1@gmail.com>
  * @date 6 May 2020
  * @version 1.0.0
- * @brief A PSOPT implementation for ETOL
+ * @brief A PSOPT version 5.0.0 implementation for ETOL
  * @section DESCRIPTION
  * A <a href="http://www.psopt.org/">PSOPT 4.0.1</a> implementation for the
  * pure virtual methods in the TrajectoryOptimization class. It casts the
@@ -40,22 +40,22 @@ ePSOPT::ePSOPT() : ePSOPT::TrajectoryOptimizer() {
 void ePSOPT::setup() {
     this->_problem.phases(1).nstates = this->getNStates();
     this->_problem.phases(1).ncontrols = this->getNControls();
-    this->_problem.phases(1).nevents = 2 * static_cast<int>(this->getNStates());
-    this->_problem.phases(1).nodes = (std::string("[") +
-            std::to_string(this->getNSteps()+1) + "]").c_str();
+    this->_problem.phases(1).nevents = 2 * this->getNStates();
+    this->_problem.phases(1).nodes = (RowVectorXi(1) <<
+            (this->getNSteps() + 1)).finished();
 
-    if (this->_problem.phases(1).guess.controls.GetNoRows() < 1)
+    if (this->_problem.phases(1).guess.controls.rows() < 1)
         this->_problem.phases(1).guess.controls = ::zeros(getNStates(),
                                                             getNSteps()+1);
 
-    if (this->_problem.phases(1).guess.states.GetNoRows() < 1)
+    if (this->_problem.phases(1).guess.states.rows() < 1)
         this->_problem.phases(1).guess.states = ::zeros(getNControls(),
                                                         getNSteps()+1);
-    if (this->_problem.phases(1).guess.time.GetNoRows() < 1)
+    if (this->_problem.phases(1).guess.time.rows() < 1)
         this->_problem.phases(1).guess.time = ::linspace(0.,
                 getNSteps()*getDt(), getNSteps()+1);
 
-    _problem.phases(1).npath = static_cast<int>(this->_parmaeters.size());
+    _problem.phases(1).npath = this->_parameters.size();
 
     ::psopt_level2_setup(_problem, _algorithm);
 
@@ -123,33 +123,30 @@ Sol* ePSOPT::getSolution() {
 // Private functions
 
 void ePSOPT::addBounds() {
-    paramset_t::iterator param = this->_parmaeters.begin();
+    paramset_t::iterator param = this->_parameters.begin();
     state_t::iterator xlow(getXlower().begin()), xup(getXupper().begin()),
             ulow(getUlower().begin()), uup(getUupper().begin()),
             x0(getX0().begin()), xf(getXf().begin()), xtol(getXtol().begin());
 
 
-    int offset = static_cast<int>(this->getNStates()) +1;
+    size_t offset = this->getNStates();
     for (size_t i= 0; i < this->getNStates(); i++) {
-        int ii = static_cast<int>(i);
-        _problem.phases(1).bounds.lower.states(ii+1) = *(xlow++);
-        _problem.phases(1).bounds.upper.states(ii+1) = *(xup++);
+        _problem.phases(1).bounds.lower.states(i) = *(xlow++);
+        _problem.phases(1).bounds.upper.states(i) = *(xup++);
 
-        _problem.phases(1).bounds.lower.events(ii+1) = *x0 - *xtol;
-        _problem.phases(1).bounds.upper.events(ii+1) = *(x0++) + *xtol;
+        _problem.phases(1).bounds.lower.events(i) = *x0 - *xtol;
+        _problem.phases(1).bounds.upper.events(i) = *(x0++) + *xtol;
 
-        _problem.phases(1).bounds.lower.events(ii+offset) = *xf - *xtol;
-        _problem.phases(1).bounds.upper.events(ii+offset)=*(xf++)+*(xtol++);
+        _problem.phases(1).bounds.lower.events(i+offset) = *xf - *xtol;
+        _problem.phases(1).bounds.upper.events(i+offset)=*(xf++)+*(xtol++);
     }
     for (size_t i= 0; i < this->getNControls(); i++) {
-        int ii = static_cast<int>(i);
-        _problem.phases(1).bounds.lower.controls(ii+1) = *(ulow++);
-        _problem.phases(1).bounds.upper.controls(ii+1) =  *(uup++);
+        _problem.phases(1).bounds.lower.controls(i) = *(ulow++);
+        _problem.phases(1).bounds.upper.controls(i) = *(uup++);
     }
-    for (size_t i= 0; i < this->_parmaeters.size(); i++) {
-        int ii = static_cast<int>(i);
-        _problem.phases(1).bounds.lower.path(ii+1) = param->second.lbnd;
-        _problem.phases(1).bounds.upper.path(ii+1) = (param++)->second.ubnd;
+    for (size_t i= 0; i < this->_parameters.size(); i++) {
+        _problem.phases(1).bounds.lower.path(i) = param->second.lbnd;
+        _problem.phases(1).bounds.upper.path(i) = (param++)->second.ubnd;
     }
     _problem.phases(1).bounds.lower.StartTime = 0.;
     _problem.phases(1).bounds.upper.StartTime = 0.;
@@ -158,9 +155,9 @@ void ePSOPT::addBounds() {
 }
 
 void ePSOPT::getTraj() {
-    DMatrix xmat         = _solution.get_states_in_phase(1);
-    DMatrix umat         = _solution.get_controls_in_phase(1);
-    DMatrix tmat         = _solution.get_time_in_phase(1);
+    MatrixXd xmat         = _solution.get_states_in_phase(1);
+    MatrixXd umat         = _solution.get_controls_in_phase(1);
+    MatrixXd tmat         = _solution.get_time_in_phase(1);
 
     traj_t* xtraj = this->getXtraj();
     xtraj->clear();
@@ -168,18 +165,18 @@ void ePSOPT::getTraj() {
     traj_t* utraj = this->getUtraj();
     utraj->clear();
 
-    for (int32_t j(1); j <= tmat.GetNoCols(); j++) {
+    for (size_t j(0); j < tmat.cols(); j++) {
         double t;
         state_t x, u;
 
-        t = tmat.element(1, j);
+        t = tmat(1, j);
 
-        for (int32_t i(1); i <= xmat.GetNoRows(); i++)
-            x.push_back(xmat.elem(i, j));
+        for (size_t i(0); i < xmat.rows(); i++)
+            x.push_back(xmat(i, j));
         xtraj->push_back(traj_elem_t(t, x));
 
-        for (int32_t i(1); i <= umat.GetNoRows(); i++)
-            u.push_back(umat.elem(i, j));
+        for (size_t i(0); i < umat.rows(); i++)
+            u.push_back(umat(i, j));
         utraj->push_back(traj_elem_t(t, u));
     }
 }
@@ -200,8 +197,9 @@ adouble ePSOPT::integrand_cost(adouble* states, adouble* controls,
             x.push_back(&states[i]);
     for (size_t i(0); i < ptr->getNControls(); i++)
         u.push_back(&controls[i]);
-
-    fout = (*ptr->_objective)(x, u, {""}, {""}, time,
+    vector_t params = {std::string()};
+    std::vector<std::string> pnames = {std::string("")};
+    fout = (*ptr->_objective)(x, u, params, pnames, time,
                                 ptr->getDt());
      try {
         f_val = std::any_cast<adouble>(fout);
@@ -222,8 +220,7 @@ void ePSOPT::dae(adouble* derivatives, adouble* path, adouble* states,
              adouble* xad, int iphase, Workspace* workspace) {
     scalar_t f_val, p_val;
     vector_t x, u;
-    ePSOPT* ptr = reinterpret_cast<ePSOPT *>(
-                                                workspace->problem->user_data);
+    ePSOPT* ptr = reinterpret_cast<ePSOPT *>(workspace->problem->user_data);
 
     for (size_t i(0); i < ptr->getNStates(); i++)
         x.push_back(&states[i]);
@@ -231,9 +228,9 @@ void ePSOPT::dae(adouble* derivatives, adouble* path, adouble* states,
     for (size_t i(0); i < ptr->getNControls(); i++)
         u.push_back(&controls[i]);
 
-    for (size_t i(1); i<= ptr->getXrhorizon(); i++) {
+    for (size_t i(1); i< ptr->getXrhorizon(); i++) {
         double delay = ptr->getDt()*i;
-        for (int j(1); j <= static_cast<int>(ptr->getNStates()); j++) {
+        for (int j(0); j < ptr->getNStates(); j++) {
             adouble state_prev[1];
             get_delayed_state(state_prev, j, iphase, t, delay, xad, workspace);
             x.push_back(state_prev);
@@ -242,7 +239,7 @@ void ePSOPT::dae(adouble* derivatives, adouble* path, adouble* states,
 
     for (size_t i(1); i<= ptr->getUrhorizon(); i++) {
         double delay = ptr->getDt()*i;
-        for (int j(1); j <= static_cast<int>(ptr->getNControls()); j++) {
+        for (int j(1); j <= ptr->getNControls(); j++) {
             adouble control_prev[1];
             get_delayed_control(control_prev, j, iphase, t, delay, xad,
                                     workspace);
@@ -254,7 +251,9 @@ void ePSOPT::dae(adouble* derivatives, adouble* path, adouble* states,
         adouble *tval  = &t;
         for (size_t i(0); i < ptr->getNStates(); i++) {
             f_t* f = ptr->_gradient.at(i);
-            f_val = (*f)(x, u, {""}, {""}, tval, ptr->getDt());
+            vector_t params = {std::string()};
+            std::vector<std::string> pnames = {std::string("")};
+            f_val = (*f)(x, u, params, pnames, tval, ptr->getDt());
             adouble out;
             out = std::any_cast<adouble>(f_val);
             derivatives[i] = out;
@@ -262,7 +261,9 @@ void ePSOPT::dae(adouble* derivatives, adouble* path, adouble* states,
         size_t j(0);
         for (size_t i(0); i < ptr->_constraints.size(); i++) {
             f_t* p = ptr->_constraints.at(i);
-            p_val = (*p)(x, u, {""}, {""}, tval, ptr->getDt());
+            vector_t params = {std::string()};
+            std::vector<std::string> pnames = {std::string("")};
+            p_val = (*p)(x, u, params, pnames, tval, ptr->getDt());
             fout_psopt_t out = std::any_cast<fout_psopt_t>(p_val);
             for (adouble val : out)
                 path[j++] = val;

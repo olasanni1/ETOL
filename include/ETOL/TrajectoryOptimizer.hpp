@@ -582,7 +582,7 @@ class TrajectoryOptimizer {
     size_t _xrhorizon;                      /**< state's reverse time horizon */
     size_t _urhorizon;                    /**< control's reverse time horizon */
     size_t _rhorizon;                       /**< Maximum reverse time horizon */
-    paramset_t _parmaeters;                 /**< parameter key/value map */
+    paramset_t _parameters;                 /**< parameter key/value map */
     std::vector<border_t> _obstacles_raw;   /**< raw exclusion zones*/
     std::list<region_t> _obstacles;         /**< partitioned exclusion zones */
     std::list<track_t> _tracks;             /**< moving exclusion zones */

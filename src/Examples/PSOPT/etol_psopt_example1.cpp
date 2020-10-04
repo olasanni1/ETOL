@@ -21,7 +21,7 @@
 
 // Global Data
 std::vector<ETOL::border_t>* obstacles;
-std::vector<std::pair<double, DMatrix>> tracks = {};
+std::vector<std::pair<double, MatrixXd>> tracks = {};
 
 // Function prototypes
 void editAlgo(ETOL::TrajectoryOptimizer*);
@@ -83,10 +83,11 @@ void editAlgo(ETOL::TrajectoryOptimizer*t) {
     ETOL::ePSOPT* ptr = dynamic_cast<ETOL::ePSOPT*>(t);
     if (ptr) {
         Alg* algo = ptr->getAlgorithm();
-        algo->defect_scaling                 = "jacobian-based";
+        algo->nlp_method                    = "IPOPT";
+        algo->defect_scaling                = "jacobian-based";
         algo->ipopt_max_cpu_time            = 100;
-        algo->mr_max_iterations                = 40;
-        algo->ode_tolerance                    = 1.e-3;
+        algo->mr_max_iterations             = 40;
+        algo->ode_tolerance                 = 1.e-3;
     } else {
         std::cout << "EditAlgo only works for ePSOPT!" << std::endl;
         exit(EXIT_FAILURE);
@@ -201,17 +202,14 @@ ETOL::f_t saaConstraint(ETOL::TrajectoryOptimizer* t) {
     // 1.5    2        4        5
     size_t i(0);
     for (auto track : *t->getTracks()) {
-        DMatrix tbl = zeros(track.trajectory.size(),
+        MatrixXd tbl = zeros(track.trajectory.size(),
                     track.trajectory.front().second.size()+1);
-        size_t j(1);
+        size_t j(0);
         for (auto data : track.trajectory) {
-            double& t = tbl.elem(j, 1);
-            t = data.first;
-            size_t k(2);
+            size_t k(0);
+            tbl(j, k++) = data.first;
             for (auto state : data.second) {
-                double& val = tbl.elem(j, k);
-                val = state;
-                k++;
+                tbl(j, k++) = state;
             }
             j++;
         }
@@ -230,10 +228,13 @@ ETOL::f_t saaConstraint(ETOL::TrajectoryOptimizer* t) {
             adouble tval = *std::any_cast<adouble*>(k);
             for (auto track : tracks) {
                 adouble xc, yc;
-                linear_interpolation(&xc, tval, track.second.Column(1),
-                        track.second.Column(2), track.second.GetNoRows());
-                linear_interpolation(&yc, tval, track.second.Column(1),
-                        track.second.Column(3), track.second.GetNoRows());
+                MatrixXd h1     = track.second.col(0);
+                MatrixXd h2     = track.second.col(1);
+                MatrixXd h3     = track.second.col(2);
+                linear_interpolation(&xc, tval, h1,
+                        h2, track.second.rows());
+                linear_interpolation(&yc, tval, h1,
+                        h3, track.second.rows());
 
                 adouble dx = xk - xc;
                 adouble dy = yk - yc;

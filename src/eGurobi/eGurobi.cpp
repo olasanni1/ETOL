@@ -249,7 +249,7 @@ void eGurobi::createVars() {
 
             // varName_time#
             double t = static_cast<double>(k) * this->getDt();
-            for (auto param : this->_parmaeters) {
+            for (auto param : this->_parameters) {
                 if ((t >= param.second.tStart) && (t <= param.second.tStop)) {
                     GRBVar var;
                     var = (this->_model->addVar(
