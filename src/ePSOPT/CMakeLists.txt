@@ -9,7 +9,7 @@ if(PSOPT_FOUND)
   find_package(PkgConfig REQUIRED)
   pkg_check_modules(adolc REQUIRED IMPORTED_TARGET adolc)
   pkg_check_modules(ipopt REQUIRED IMPORTED_TARGET ipopt)
-  pkg_check_modules(snopt7 REQUIRED IMPORTED_TARGET snopt7)
+  pkg_check_modules(snopt7 IMPORTED_TARGET snopt7)
   
   add_library(${PROJECT_NAME} STATIC ${PROJECT_NAME}.cpp)
 
