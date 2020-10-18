@@ -66,7 +66,7 @@ void eSCIP::setup() {
 void eSCIP::solve() {
     SCIP_CALL_ABORT(SCIPsolve(scip_));
     if (SCIPgetNSols(scip_)) {
-        this->setScore(SCIPgetSolTransObj(scip_, SCIPgetBestSol(scip_)));
+        this->setScore(SCIPgetSolOrigObj(scip_, SCIPgetBestSol(scip_)));
         this->getTraj();
     }
 }

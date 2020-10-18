@@ -150,17 +150,17 @@ ETOL::scalar_t absConstraint(F_ARGS) {
         SCIP_VAR* uk3 = std::any_cast<SCIP_VAR*>(u.at(3));
         ETOL::fout_scip_t fout = {
         {
-            {std::make_pair(uk2, -1.0), std::make_pair(uk0, 1.0)},
-            -ESCIP_INF, 0.0},
+            {std::make_pair(uk2, 1.0), std::make_pair(uk0, 1.0)},
+            0.0, ESCIP_INF},
         {
-            {std::make_pair(uk2, -1.0), std::make_pair(uk0, -1.0)},
-            -ESCIP_INF, 0.0},
+            {std::make_pair(uk2, 1.0), std::make_pair(uk0, -1.0)},
+            0.0, ESCIP_INF},
         {
-            {std::make_pair(uk3, -1.0), std::make_pair(uk1, 1.0)},
-            -ESCIP_INF, 0.0},
+            {std::make_pair(uk3, 1.0), std::make_pair(uk1, 1.0)},
+            0.0, ESCIP_INF},
         {
-            {std::make_pair(uk3, -1.0), std::make_pair(uk1, -1.0)},
-            -ESCIP_INF, 0.0}
+            {std::make_pair(uk3, 1.0), std::make_pair(uk1, -1.0)},
+            0.0, ESCIP_INF}
         };
         return fout;
     } catch(std::bad_any_cast& e) {
