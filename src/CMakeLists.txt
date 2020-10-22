@@ -20,7 +20,8 @@ add_definitions(-D__PSTL_CPP14_VARIABLE_TEMPLATES_PRESENT)
 
 include_directories(${PROJECT_SOURCE_DIR}/../include)
 
-SET (SUBDIRS TrajectoryOptimizer eGurobi ePSOPT eGLPK eOMPL eDymos Examples)
+SET (SUBDIRS TrajectoryOptimizer eGurobi ePSOPT eGLPK eOMPL eDymos eSCIP
+             Examples)
 
 FOREACH(subdir ${SUBDIRS})
   ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/${subdir})
