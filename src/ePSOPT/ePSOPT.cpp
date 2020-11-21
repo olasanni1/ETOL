@@ -169,7 +169,7 @@ void ePSOPT::getTraj() {
         double t;
         state_t x, u;
 
-        t = tmat(1, j);
+        t = tmat(0, j);
 
         for (size_t i(0); i < xmat.rows(); i++)
             x.push_back(xmat(i, j));
