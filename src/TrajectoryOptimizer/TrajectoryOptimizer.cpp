@@ -99,7 +99,7 @@ region_t TrajectoryOptimizer::genRegion(border_t* border) {
         polygon.push_back(Traits::Point_2((*it).at(0), (*it).at(1)));
 
     // Compute polygon partitions
-    CGAL::y_monotone_partition_2(polygon.vertices_begin(),
+    CGAL::optimal_convex_partition_2(polygon.vertices_begin(),
                                     polygon.vertices_end(),
                                     std::back_inserter(partition_polys));
 

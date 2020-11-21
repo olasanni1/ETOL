@@ -13,13 +13,15 @@
  * a Mixed-Integer Linear Programming (MILP) problem.
  ******************************************************************************/
 
-#include <ETOL/eGurobi.hpp>
+#include <map>
+#include <memory>
 #include <iostream>
 #include <cassert>
 #include <execution>
 #include <algorithm>
 #include <numeric>
 #include <string>
+#include <ETOL/eGurobi.hpp>
 
 namespace ETOL {
 // Constructors
@@ -33,11 +35,11 @@ constexpr std::execution::unsequenced_policy EXEC_POLICY_UNSEQ{};
 #endif
 
 eGurobi::eGurobi()
-    : eGurobi::TrajectoryOptimizer(), env_(GRBEnv()), model_(GRBModel(env_)),
+    : eGurobi::TrajectoryOptimizer(), env_(NULL), model_(NULL),
       _nConstr(ATOMIC_VAR_INIT(0)), _eGRB(NULL), x0_changed_(true),
       xf_changed_(true), reset_(true) {
-    this->_env = &env_;
-    this->_model = &model_;
+    this->env_.reset(new GRBEnv());
+    this->model_.reset(new GRBModel(*env_));
 }
 
 // Virtual Members
@@ -92,7 +94,7 @@ void eGurobi::setup() {
 
     try {
         if (reset_) {
-            this->model_.reset();
+            this->model_.reset(new GRBModel(*env_));
             this->_nConstr = 0;
             this->createVars();
             this->addX0();
@@ -117,9 +119,9 @@ void eGurobi::setup() {
 
 void eGurobi::solve() {
     try {
-        this->_model->optimize();
-        if (this->_model->get(GRB_IntAttr_Status) == GRB_OPTIMAL) {
-            setScore(_model->get(::GRB_DoubleAttr_ObjVal));
+        this->model_->optimize();
+        if (this->model_->get(GRB_IntAttr_SolCount) > 0) {
+            setScore(model_->get(::GRB_DoubleAttr_ObjVal));
             this->getTraj();
         }
     } catch(GRBException& e) {
@@ -129,7 +131,7 @@ void eGurobi::solve() {
 }
 
 void eGurobi::debug() {
-    this->_model->write("debug.lp");
+    this->model_->write("debug.lp");
     std::cout << "Debug information written to 'debug.lp'" << std::endl;
 }
 
@@ -150,13 +152,13 @@ GRBLinExpr eGurobi::_objfunc(const size_t &tIdx) {
     std::transform(EXEC_POLICY_UNSEQ,
             x_idx.begin(), x_idx.end(), x.begin(),
        [this, &tIdx](const size_t& j) -> scalar_t {
-       return (*this->_model).getVarByName(getStateName(tIdx, j));
+       return this->model_->getVarByName(getStateName(tIdx, j));
     });
 
     std::iota(u_idx.begin(), u_idx.end(), 0);
     std::transform(EXEC_POLICY_UNSEQ, u_idx.begin(), u_idx.end(), u.begin(),
        [this, &tIdx](const size_t& j) -> scalar_t {
-       return (*this->_model).getVarByName(getControlName(tIdx, j));
+       return this->model_->getVarByName(getControlName(tIdx, j));
     });
 
     f_val = (*this->_objective)(
@@ -183,14 +185,14 @@ GRBLinExpr eGurobi::_dynConstr(const size_t &tIdx, const size_t &sIdx) {
     std::iota(x_idx.begin(), x_idx.end(), 0);
     std::transform(EXEC_POLICY_UNSEQ, x_idx.begin(), x_idx.end(), x.begin(),
             [this, &tIdx](const size_t& j) -> scalar_t {
-       return (*this->_model).getVarByName(getStateName(
+       return this->model_->getVarByName(getStateName(
                tIdx - j / this->getNStates(), j % this->getNStates()));
     });
 
     std::iota(u_idx.begin(), u_idx.end(), 0);
     std::transform(EXEC_POLICY_UNSEQ, u_idx.begin(), u_idx.end(), u.begin(),
             [this, &tIdx](const size_t& j) -> scalar_t {
-       return (*this->_model).getVarByName(getControlName(
+       return this->model_->getVarByName(getControlName(
                tIdx - j / this->getNControls(), j % this->getNControls()));
     });
 
@@ -216,13 +218,13 @@ fout_grb_t eGurobi::_pathConstr(const size_t &tIdx, const size_t &kIdx) {
     std::iota(x_idx.begin(), x_idx.end(), 0);
     std::transform(EXEC_POLICY_UNSEQ, x_idx.begin(), x_idx.end(), x.begin(),
        [this, &tIdx](const size_t& j) -> scalar_t {
-       return (*this->_model).getVarByName(getStateName(tIdx, j));
+       return this->model_->getVarByName(getStateName(tIdx, j));
     });
 
     std::iota(u_idx.begin(), u_idx.end(), 0);
     std::transform(EXEC_POLICY_UNSEQ, u_idx.begin(), u_idx.end(), u.begin(),
        [this, &tIdx](const size_t& j) -> scalar_t {
-       return (*this->_model).getVarByName(getControlName(tIdx, j));
+       return this->model_->getVarByName(getControlName(tIdx, j));
     });
 
     f_t* p = this->_constraints.at(kIdx);
@@ -267,7 +269,7 @@ void eGurobi::createVars() {
             u_it = this->getXupper().begin();
             vt_it = this->getXvartype().begin();
             for (size_t j(0); j < this->getNStates(); j++) {
-                this->_model->addVar(*(l_it++), *(u_it++), 0.0,
+                this->model_->addVar(*(l_it++), *(u_it++), 0.0,
                         getGRBType(*(vt_it++)), getStateName(k, j));
             }
 
@@ -276,7 +278,7 @@ void eGurobi::createVars() {
             u_it = this->getUupper().begin();
             vt_it = this->getUvartype().begin();
             for (size_t j(0); j < this->getNControls(); j++) {
-                this->_model->addVar(*(l_it++), *(u_it++), 0.0,
+                this->model_->addVar(*(l_it++), *(u_it++), 0.0,
                         getGRBType(*(vt_it++)), getControlName(k, j));
             }
 
@@ -285,7 +287,7 @@ void eGurobi::createVars() {
             for (auto param : this->_parameters) {
                 if ((t >= param.second.tStart) && (t <= param.second.tStop)) {
                     GRBVar var;
-                    var = (this->_model->addVar(
+                    var = (this->model_->addVar(
                             param.second.lbnd, param.second.ubnd, 0.0,
                             getGRBType(param.second.varType),
                             getParamName(param.first, k)));
@@ -294,7 +296,7 @@ void eGurobi::createVars() {
                 }
             }
         }
-        this->_model->update();
+        this->model_->update();
     } catch (GRBException& ex) {
         this->_eGRB = &ex;
         errorHandler();
@@ -311,17 +313,17 @@ void eGurobi::addX0() {
                 if (!std::isnan(this->getX0().at(j))) {
                     this->_x0_constraint_names.push_back(
                             "c" + std::to_string((size_t)(this->_nConstr++)));
-                    GRBVar var = this->_model->getVarByName(getStateName(i, j));
+                    GRBVar var = this->model_->getVarByName(getStateName(i, j));
                     GRBVar* varptr = &var;
                     expr.addTerms(&coeff, varptr, 1);
-                    this->_model->addConstr(
+                    this->model_->addConstr(
                             expr, GRB_EQUAL, this->getX0().at(j),
                             this->_x0_constraint_names.back());
                     expr.clear();
                 }
             }
         }
-        this->_model->update();
+        this->model_->update();
     } catch (GRBException& ex) {
         this->_eGRB = &ex;
         errorHandler();
@@ -342,19 +344,19 @@ void eGurobi::addXf() {
                             "c" + std::to_string((size_t)(this->_nConstr++)));
                 this->_xf_lower_constraint_names.push_back(
                             "c" + std::to_string((size_t)(this->_nConstr++)));
-                GRBVar var = this->_model->getVarByName(
+                GRBVar var = this->model_->getVarByName(
                         getStateName(i, j));
                 expr.addTerms(&coeff, &var, 1);
-                this->_model->addConstr(expr, GRB_LESS_EQUAL,
+                this->model_->addConstr(expr, GRB_LESS_EQUAL,
                         this->getXf().at(j) + this->getXtol().at(j),
                         this->_xf_upper_constraint_names.back());
-                this->_model->addConstr(expr, GRB_GREATER_EQUAL,
+                this->model_->addConstr(expr, GRB_GREATER_EQUAL,
                         this->getXf().at(j) - this->getXtol().at(j),
                         this->_xf_lower_constraint_names.back());
                 expr.clear();
             }
         }
-        this->_model->update();
+        this->model_->update();
     } catch (GRBException& ex) {
         this->_eGRB = &ex;
         errorHandler();
@@ -367,12 +369,12 @@ void eGurobi::addConstr() {
             for (size_t i(0); i <= this->getNSteps(); i++) {
                 fout_grb_t fout = this->_pathConstr(i, k);
                 for (auto grb : fout) {
-                    this->_model->addConstr(grb.expr, grb.sense, grb.rhs,
+                    this->model_->addConstr(grb.expr, grb.sense, grb.rhs,
                             "c" + std::to_string((size_t)(this->_nConstr++)));
                 }
             }
         }
-        this->_model->update();
+        this->model_->update();
     } catch (GRBException& ex) {
         this->_eGRB = &ex;
         errorHandler();
@@ -383,10 +385,10 @@ void eGurobi::addDyn() {
     try {
         for (size_t i = this->getRhorizon(); i <= this->getNSteps(); i++) {
             for (size_t j(0); j < this->getNStates(); j++)
-                this->_model->addConstr(this->_dynConstr(i, j), GRB_EQUAL, 0.0,
+                this->model_->addConstr(this->_dynConstr(i, j), GRB_EQUAL, 0.0,
                         "c" + std::to_string((size_t)(this->_nConstr++)));
         }
-        this->_model->update();
+        this->model_->update();
     } catch (GRBException& ex) {
         this->_eGRB = &ex;
         errorHandler();
@@ -413,11 +415,11 @@ void eGurobi::addObj() {
         });
 
         if (this->isMaximized())
-            this->_model->setObjective(sum_expr, GRB_MAXIMIZE);
+            this->model_->setObjective(sum_expr, GRB_MAXIMIZE);
         else
-            this->_model->setObjective(sum_expr, GRB_MINIMIZE);
+            this->model_->setObjective(sum_expr, GRB_MINIMIZE);
 
-        this->_model->update();
+        this->model_->update();
     } catch (GRBException& ex) {
         this->_eGRB = &ex;
         errorHandler();
@@ -442,7 +444,7 @@ void eGurobi::getTraj() {
             state_t x(this->getNStates());
             std::transform(EXEC_POLICY_UNSEQ, x_idx.begin(), x_idx.end(),
                     x.begin(), [this, &i](const auto &j) -> double {
-                GRBVar var = this->_model->getVarByName(getStateName(i, j));
+                GRBVar var = this->model_->getVarByName(getStateName(i, j));
                 return(var.get(GRB_DoubleAttr_X));
             });
             return (traj_elem_t(t, x));
@@ -453,10 +455,11 @@ void eGurobi::getTraj() {
         std::transform(EXEC_POLICY_UNSEQ, t_idx.begin(), t_idx.end(),
                 utraj->begin(), [this, &u_idx](const auto & i) -> traj_elem_t {
             double t = static_cast<double>(i) * this->getDt();
+
             state_t u(getNControls());
             std::transform(EXEC_POLICY_UNSEQ, u_idx.begin(), u_idx.end(),
                     u.begin(), [this, &i](const auto &j) -> double {
-                GRBVar var = this->_model->getVarByName(getControlName(i, j));
+                GRBVar var = this->model_->getVarByName(getControlName(i, j));
                 return(var.get(GRB_DoubleAttr_X));
             });
             return (traj_elem_t(t, u));
@@ -472,8 +475,9 @@ void eGurobi::changeX0() {
     try {
         for_each(_x0_constraint_names.cbegin(), _x0_constraint_names.cend(),
                 [this, &it](const std::string& name) {
-            this->model_.getConstrByName(name).set(GRB_DoubleAttr_RHS, *(it++));
-            this->model_.update();
+            this->model_->getConstrByName(name).set(
+                    GRB_DoubleAttr_RHS, *(it++));
+            this->model_->update();
         });
     } catch (GRBException& ex) {
         this->_eGRB = &ex;
@@ -487,18 +491,18 @@ void eGurobi::changeXf() {
     for_each(_xf_upper_constraint_names.cbegin(),
             _xf_upper_constraint_names.cend(),
         [this, &it_xf, &it_xtol](const std::string& name) {
-        this->model_.getConstrByName(name).set(GRB_DoubleAttr_RHS,
+        this->model_->getConstrByName(name).set(GRB_DoubleAttr_RHS,
                 *(it_xf++) + *(it_xtol++));
-        this->model_.update();
+        this->model_->update();
     });
     it_xf = this->getXf().begin();
     it_xtol = this->getXtol().begin();
     for_each(_xf_lower_constraint_names.cbegin(),
             _xf_lower_constraint_names.cend(),
         [this, &it_xf, &it_xtol](const std::string& name) {
-        this->model_.getConstrByName(name).set(GRB_DoubleAttr_RHS,
+        this->model_->getConstrByName(name).set(GRB_DoubleAttr_RHS,
                 *(it_xf++) - *(it_xtol++));
-        this->model_.update();
+        this->model_->update();
     });
 }
 
