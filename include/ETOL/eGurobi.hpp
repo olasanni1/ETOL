@@ -12,6 +12,7 @@
 #ifndef INCLUDE_ETOL_EGUROBI_HPP_
 #define INCLUDE_ETOL_EGUROBI_HPP_
 
+#include <memory>
 #include <vector>
 #include <string>
 #include <atomic>
@@ -21,7 +22,7 @@
 
 namespace ETOL {
 
-class eGurobi : public TrajectoryOptimizer{
+class eGurobi : public TrajectoryOptimizer {
  public:
     /**
      * @brief Constructor for a Gurobi interface
@@ -109,8 +110,8 @@ class eGurobi : public TrajectoryOptimizer{
 
  protected:
     // Protected data
-    GRBEnv* _env;                       /**< Pointer to a Gurobi environment */
-    GRBModel* _model;                   /**< Pointer to a Gurobi model */
+    std::shared_ptr<GRBEnv> env_;       /**< Pointer to a Gurobi environment */
+    std::shared_ptr<GRBModel> model_;   /**< Pointer to a Gurobi model */
     GRBException* _eGRB;                /**< Pointer to a Gurobi exception */
     vector_t _params;                   /**< Path constraint configs */
     std::vector<std::string> _pnames;   /**< Path constraint names */
@@ -159,10 +160,6 @@ class eGurobi : public TrajectoryOptimizer{
     fout_grb_t _pathConstr(const size_t& tIdx, const size_t& kIdx);
 
  private:
-    // Private data
-    GRBEnv env_;                    /**< Gurobi environment */
-    GRBModel model_;                /**< Gurobi model */
-
     // Private functions
     /**
      * @brief An error handler for Gurobi exceptions

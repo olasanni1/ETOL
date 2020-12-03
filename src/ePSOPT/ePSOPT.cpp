@@ -177,7 +177,7 @@ void ePSOPT::getTraj() {
     std::iota(t_idx.begin(), t_idx.end(), 0);
     std::for_each(EXEC_POLICY_UNSEQ, t_idx.begin(), t_idx.end(),
             [&tmat, &xmat, &umat, &xtraj, &utraj](const size_t &j) {
-        double t = tmat(1, j);
+        double t = tmat(0, j);
         state_t x(xmat.rows()), u(umat.rows());
 
         std::vector<size_t> x_idx(xmat.rows());
