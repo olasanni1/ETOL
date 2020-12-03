@@ -86,7 +86,7 @@ void ePSOPT::solve() {
         std::cout << "!!!!!Problem failed!!!!!" << std::endl
             << _solution.error_msg << std::endl;
     } else {
-        this->setScore(_solution.cost);
+        this->setScore(this->isMaximized() ? -_solution.cost : _solution.cost);
         getTraj();
     }
 
@@ -134,8 +134,8 @@ void ePSOPT::addBounds() {
         _problem.phases(1).bounds.lower.states(i) = *(xlow++);
         _problem.phases(1).bounds.upper.states(i) = *(xup++);
 
-        _problem.phases(1).bounds.lower.events(i) = *x0 - *xtol;
-        _problem.phases(1).bounds.upper.events(i) = *(x0++) + *xtol;
+        _problem.phases(1).bounds.lower.events(i) = *x0;
+        _problem.phases(1).bounds.upper.events(i) = *(x0++);
 
         _problem.phases(1).bounds.lower.events(i+offset) = *xf - *xtol;
         _problem.phases(1).bounds.upper.events(i+offset)=*(xf++)+*(xtol++);
