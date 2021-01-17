@@ -132,49 +132,6 @@ class TrajectoryOptimizer {
     static void calcSlopes(const region_t& region,
             std::vector<seg_t>* lower, std::vector<seg_t>* upper);
 
-
-    /**
-     * @brief A linear interplation
-     *
-     * @tparam T a numeric datatype
-     * @param tval independent variable's value
-     * @param tvec independent variable's interpolation points
-     * @param ref dependent variable's interpolation points
-     * @return a linear interpolation value
-     */
-    template<class T>
-    T linear_interpolation(const T& tval, const state_t &tvec,
-    		const state_t &ref);
-
-    /**
-     * @brief Extracts a m-dimensional trajectory
-     *
-     * @param traj a pointer to an n-dimensional trajectory
-     * @param x_idxs
-     * @return a m-dimensionional trajectory
-     */
-    static traj_t extractTraj(traj_t* traj, const std::vector<size_t> &x_idxs);
-
-    /**
-     * @brief Scale the state values at each time step
-     *
-     * @tparam T a numeric datatype
-     * @param traj a pointer to an n-dimensional trajectory
-     * @param scalers a vector of values that will scale the trajectory
-     */
-    template<typename T>
-    static void scaleTraj(traj_t* traj, const std::vector<T> &scalers);
-
-    /**
-     * @brief Offset the state values at each time step
-     *
-     * @tparam T a numeric datatype
-     * @param traj a pointer to a state vector trajectory
-     * @param offsets a vector of values that will be added to the trajectory
-     */
-    template<typename T>
-    static void offsetTraj(traj_t* traj, const std::vector<T> &offsets);
-
     /**
      * @brief Plots a trajectory
      * @param traj a pointer to a list of trajectories
@@ -274,6 +231,101 @@ class TrajectoryOptimizer {
      * @return name of file created or modified
      */
     static std::string save(traj_t* traj, std::string fp = "traj.csv");
+
+    // Template functions
+    /**
+	 * @brief A linear interplation
+	 *
+	 * @tparam T a numeric datatype
+	 * @param tval independent variable's value
+	 * @param tvec independent variable's interpolation points
+	 * @param ref dependent variable's interpolation points
+	 * @return a linear interpolation value
+	 */
+	template<class T>
+	static T linear_interpolation(const T& tval, const state_t &tvec,
+			const state_t &ref) {
+		size_t j = 0;  // if t < tvec[0]
+		if (tval > tvec.back()) {
+			j = tvec.size() - 2.;
+		} else if (tval >= tvec.front()) {
+			auto curr = tvec.cbegin();
+			auto next = std::next(curr, 1);
+			do {
+				if (tval >= *(curr++) && tval <= *(next++))
+					j = std::distance(tvec.cbegin(), curr);
+			} while (next != tvec.cend());
+		}
+		return ((tval - tvec.at(j) + ref.at(j)) * (ref.at(j+1) - ref.at(j)) /
+				(tvec.at(j+1) - tvec.at(j)));
+	}
+
+	/**
+	 * @brief Extracts a m-dimensional trajectory
+	 *
+	 * @tparam T an integer datatype
+	 * @param traj an n-dimensional trajectory
+	 * @param x_idxs
+	 * @return a m-dimensionional trajectory
+	 */
+	template<typename T>
+	static traj_t extractTraj(const traj_t &traj,
+			const std::vector<T> &idxs) {
+		ETOL::traj_t out(traj.size());
+		std::transform(traj.cbegin(), traj.cend(), out.begin(),
+				[&idxs](const ETOL::traj_elem_t &elem) -> ETOL::traj_elem_t {
+			ETOL::state_t state;
+			std::transform(idxs.cbegin(), idxs.cend(),
+					std::back_inserter(state),
+					[&elem](const size_t &i) -> double {
+				return i == 0 ? elem.first : elem.second.at(i - 1);
+			});
+			return ETOL::traj_elem_t(elem.first, state);
+		});
+		return out;
+	}
+
+	/**
+	 * @brief Scale the state values at each time step
+	 *
+	 * @tparam T a numeric datatype
+	 * @param traj a pointer to an n-dimensional trajectory
+	 * @param scalers a vector of values that will scale the trajectory
+	 */
+	template<typename T>
+	static void scaleTraj(traj_t* traj, const std::vector<T> &scalers) {
+		auto init = scalers.second.cbegin();
+		auto stop = scalers.second.cend();
+		std::for_each(traj->begin(), traj->end(),
+				[&init, &stop](ETOL::traj_elem_t &elem) {
+			auto curr = init;
+			std::for_each(elem.second.begin(), elem.second.end(),
+					[&curr, &stop](state_t::value_type &state) {
+				state *= (curr == stop) ? 1. : *(curr++);
+			});
+		});
+	}
+
+	/**
+	 * @brief Offset the state values at each time step
+	 *
+	 * @tparam T a numeric datatype
+	 * @param traj a pointer to a state vector trajectory
+	 * @param offsets a vector of values that will be added to the trajectory
+	 */
+	template<typename T>
+	static void offsetTraj(traj_t* traj, const std::vector<T> &offsets) {
+		auto init = offsets.second.cbegin();
+		auto stop = offsets.second.cend();
+		std::for_each(traj->begin(), traj->end(),
+				[&init, &stop](ETOL::traj_elem_t &elem) {
+			auto curr = init;
+			std::for_each(elem.second.begin(), elem.second.end(),
+					[&curr, &stop](state_t::value_type &state) {
+				state += (curr == stop) ? 0. : *(curr++);
+			});
+		});
+	}
 
     // Getters and Setters
     /**
