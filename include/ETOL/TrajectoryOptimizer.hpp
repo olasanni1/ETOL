@@ -107,13 +107,13 @@ class TrajectoryOptimizer {
      * @brief Plot the time history of a state variable
      * @param idx the index of the state variable
      */
-    void plotX(const int idx);
+    void plotX(const size_t idx);
 
     /**
      * @brief Plot the time history of a control variable
      * @param idx the index of the control variable
      */
-    void plotU(const int idx);
+    void plotU(const size_t idx);
 
     // Static Members
     /**
@@ -131,6 +131,49 @@ class TrajectoryOptimizer {
      */
     static void calcSlopes(const region_t& region,
             std::vector<seg_t>* lower, std::vector<seg_t>* upper);
+
+
+    /**
+     * @brief A linear interplation
+     *
+     * @tparam T a numeric datatype
+     * @param tval independent variable's value
+     * @param tvec independent variable's interpolation points
+     * @param ref dependent variable's interpolation points
+     * @return a linear interpolation value
+     */
+    template<class T>
+    T linear_interpolation(const T& tval, const state_t &tvec,
+    		const state_t &ref);
+
+    /**
+     * @brief Extracts a m-dimensional trajectory
+     *
+     * @param traj a pointer to an n-dimensional trajectory
+     * @param x_idxs
+     * @return a m-dimensionional trajectory
+     */
+    static traj_t extractTraj(traj_t* traj, const std::vector<size_t> &x_idxs);
+
+    /**
+     * @brief Scale the state values at each time step
+     *
+     * @tparam T a numeric datatype
+     * @param traj a pointer to an n-dimensional trajectory
+     * @param scalers a vector of values that will scale the trajectory
+     */
+    template<typename T>
+    static void scaleTraj(traj_t* traj, const std::vector<T> &scalers);
+
+    /**
+     * @brief Offset the state values at each time step
+     *
+     * @tparam T a numeric datatype
+     * @param traj a pointer to a state vector trajectory
+     * @param offsets a vector of values that will be added to the trajectory
+     */
+    template<typename T>
+    static void offsetTraj(traj_t* traj, const std::vector<T> &offsets);
 
     /**
      * @brief Plots a trajectory

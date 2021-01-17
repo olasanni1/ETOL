@@ -86,6 +86,11 @@ int main(int argc, char** argv) {
 //    ETOL::TrajectoryOptimizer::animate2D(t->getXtraj(), 1, false,
 //            "animation.mp4", t->getObstacles(), t->getTracks());
 
+    t->plotX(0);
+    t->plotX(1);
+    t->plotU(0);
+    t->plotU(1);
+
     // Release resources e.g. memory
     t->close();
 

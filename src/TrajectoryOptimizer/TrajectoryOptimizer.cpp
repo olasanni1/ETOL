@@ -200,6 +200,68 @@ void TrajectoryOptimizer::calcSlopes(const region_t& region,
     }
 }
 
+template<class T>
+T TrajectoryOptimizer::linear_interpolation(const T& tval, const state_t &tvec,
+    		const state_t &ref) {
+	size_t j = 0;  // if t < tvec[0]
+	if (tval > tvec.back()) {
+		j = tvec.size() - 2.;
+	} else if (tval >= tvec.front()) {
+		auto curr = tvec.cbegin();
+		auto next = curr + 1;
+		do {
+			if (tval >= *(curr++) && tval <= *(next++))
+				j = std::distance(tvec.begin(), curr);
+		} while (next != tvec.cend());
+	}
+	return ((tval - tvec.at(j) + ref.at(j)) * (ref.at(j+1) - ref.at(j)) /
+			(tvec.at(j+1) - tvec.at(j)));
+}
+
+traj_t TrajectoryOptimizer::extractTraj(traj_t* traj,
+		const std::vector<size_t> &idxs) {
+	ETOL::traj_t out(traj->size());
+	std::transform(traj->cbegin(), traj->cend(), out.begin(),
+			[&idxs](const ETOL::traj_elem_t &elem) -> ETOL::traj_elem_t {
+		ETOL::state_t state;
+		std::transform(idxs.cbegin(), idxs.cend(),
+				std::back_inserter(state), [&elem](const size_t &i) -> double {
+			return i == 0 ? elem.first : elem.second.at(i - 1);
+		});
+		return ETOL::traj_elem_t(elem.first, state);
+	});
+	return out;
+}
+
+template<typename T>
+void TrajectoryOptimizer::scaleTraj(traj_t* traj,
+		const std::vector<T> &scalers) {
+	auto init = scalers.second.cbegin();
+	auto stop = scalers.second.cend();
+	std::for_each(traj->begin(), traj->end(),
+			[&init, &stop](ETOL::traj_elem_t &elem) {
+		auto curr = init;
+		std::for_each(elem.second.begin(), elem.second.end(),
+				[&curr, &stop](state_t::value_type &state) {
+			state *= (curr == stop) ? 1. : *(curr++);
+		});
+	});
+}
+
+template<typename T>
+void TrajectoryOptimizer::offsetTraj(traj_t* traj, const std::vector<T> &offsets) {
+	auto init = offsets.second.cbegin();
+	auto stop = offsets.second.cend();
+	std::for_each(traj->begin(), traj->end(),
+			[&init, &stop](ETOL::traj_elem_t &elem) {
+		auto curr = init;
+		std::for_each(elem.second.begin(), elem.second.end(),
+				[&curr, &stop](state_t::value_type &state) {
+			state += (curr == stop) ? 0. : *(curr++);
+		});
+	});
+}
+
 void TrajectoryOptimizer::plot(traj_t *traj, const std::string title,
         const std::string xlab,    const std::string ylab,
         double tmin, double tmax, double xmin, double xmax) {
@@ -255,6 +317,25 @@ void TrajectoryOptimizer::plot(traj_t *traj, const std::string title,
             gp.send1d(lines.at(i));
     } else {
         std::cout << "No Data to Plot!!!" << std::endl;
+    }
+}
+
+void TrajectoryOptimizer::plotX(const size_t idx) {
+    Gnuplot gp;
+    if (!(getXtraj()->empty())) {
+    	std::vector<size_t> idxs{idx+1};
+    	auto traj = TrajectoryOptimizer::extractTraj(getXtraj(), idxs);
+    	std::string title =  "State " + std::to_string(idx);
+    	TrajectoryOptimizer::plot(&traj, title, "time", "Value");
+    }
+}
+
+void TrajectoryOptimizer::plotU(const size_t idx) {
+    if (!(getUtraj()->empty())) {
+    	std::vector<size_t> idxs{idx+1};
+    	auto traj = TrajectoryOptimizer::extractTraj(getUtraj(), idxs);
+    	std::string title =  "Control " + std::to_string(idx);
+    	TrajectoryOptimizer::plot(&traj, title, "time", "Value");
     }
 }
 
