@@ -294,8 +294,8 @@ class TrajectoryOptimizer {
 	 */
 	template<typename T>
 	static void scaleTraj(traj_t* traj, const std::vector<T> &scalers) {
-		auto init = scalers.second.cbegin();
-		auto stop = scalers.second.cend();
+		auto init = scalers.cbegin();
+		auto stop = scalers.cend();
 		std::for_each(traj->begin(), traj->end(),
 				[&init, &stop](ETOL::traj_elem_t &elem) {
 			auto curr = init;
@@ -315,8 +315,8 @@ class TrajectoryOptimizer {
 	 */
 	template<typename T>
 	static void offsetTraj(traj_t* traj, const std::vector<T> &offsets) {
-		auto init = offsets.second.cbegin();
-		auto stop = offsets.second.cend();
+		auto init = offsets.cbegin();
+		auto stop = offsets.cend();
 		std::for_each(traj->begin(), traj->end(),
 				[&init, &stop](ETOL::traj_elem_t &elem) {
 			auto curr = init;
