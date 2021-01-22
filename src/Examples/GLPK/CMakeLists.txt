@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.9)
+cmake_minimum_required(VERSION 3.5)
 
 project(eGLPK_Examples)
 
@@ -8,7 +8,6 @@ if(TARGET eGLPK)
   foreach(example ${GLPK_EXAMPLES})
     add_executable(${example} ${example}.cpp)
     target_link_libraries(${example} PUBLIC eGLPK)
-
   endforeach()
 else()
   message("Skipping eGLPK_Examples...")

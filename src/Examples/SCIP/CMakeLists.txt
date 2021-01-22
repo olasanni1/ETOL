@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.9)
+cmake_minimum_required(VERSION 3.5)
 
 project(eSCIP_Examples)
 
@@ -7,9 +7,7 @@ if(TARGET eSCIP)
 
   foreach(example ${SCIP_EXAMPLES})
     add_executable(${example} ${example}.cpp)
-    target_link_libraries(${example}
-      PUBLIC eSCIP
-      PRIVATE re2)
+    target_link_libraries(${example} PUBLIC eSCIP)
   endforeach()
 else()
   message("Skipping eSCIP_Examples...")
