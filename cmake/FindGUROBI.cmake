@@ -16,7 +16,7 @@ if(APPLE)
         /opt/gurobi811/linux64 /opt/gurobi801/linux64)
 elseif(UNIX)
   set(GUROBI_API libgurobi_g++5.2.a)
-  set(GUROBI_NAMES llibgurobi91.so libgurobi90.so libgurobi81.so libgurobi80.so)
+  set(GUROBI_NAMES libgurobi91.so libgurobi90.so libgurobi81.so libgurobi80.so)
   set(GUROBI_HINTS "${GUROBI_HINTS}"
 		/opt/gurobi911/linux64 /opt/gurobi901/linux64
         /opt/gurobi811/linux64 /opt/gurobi801/linux64)
