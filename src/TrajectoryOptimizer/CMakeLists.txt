@@ -10,7 +10,7 @@ find_package(re2)
 add_library(${PROJECT_NAME} STATIC ${PROJECT_NAME}.cpp)
 
 target_link_libraries(${PROJECT_NAME}
-  PRIVATE gmp  ${LIBXML2_LIBRARIES} ${Iconv_LIBRARIES}
+  PUBLIC gmp  ${LIBXML2_LIBRARIES} ${Iconv_LIBRARIES}
   $<IF:$<BOOL:${CGAL_FOUND}>,CGAL::CGAL,>
   $<IF:$<BOOL:${re2_FOUND}>,re2::re2,re2>
   $<IF:$<BOOL:${Boost_THREAD_FOUND}>,Boost::thread,>
