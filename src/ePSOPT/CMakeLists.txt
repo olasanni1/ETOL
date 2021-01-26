@@ -8,6 +8,7 @@ if(PSOPT_FOUND)
   find_package(Eigen3 REQUIRED NO_MODULE)
   find_package(PkgConfig REQUIRED)
   find_package(OpenMP)
+  find_package(TBB)
   pkg_check_modules(adolc REQUIRED IMPORTED_TARGET adolc)
   pkg_check_modules(ipopt REQUIRED IMPORTED_TARGET ipopt)
   pkg_check_modules(snopt7 IMPORTED_TARGET snopt7)
@@ -15,7 +16,7 @@ if(PSOPT_FOUND)
   add_library(${PROJECT_NAME} STATIC ${PROJECT_NAME}.cpp)
 
   target_link_libraries(${PROJECT_NAME} 
-    PUBLIC TrajectoryOptimizer tbb 
+    PUBLIC TrajectoryOptimizer $<IF:$<BOOL:${TBB_FOUND}>,TBB::tbb,tbb> 
     PRIVATE PSOPT PkgConfig::adolc PkgConfig::ipopt Eigen3::Eigen)
   if(snopt7_FOUND)
     target_link_libraries(${PROJECT_NAME} PRIVATE gfortran PkgConfig::snopt7) 
