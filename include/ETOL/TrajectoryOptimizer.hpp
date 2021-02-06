@@ -244,14 +244,16 @@ class TrajectoryOptimizer {
 			j = tvec.size() - 2.;
 		} else if (tval >= tvec.front()) {
 			auto curr = tvec.cbegin();
-			auto next = tvec.cbegin();
-			for (; ++next != tvec.cend(); curr++) {
+			auto next = std::next(curr, 1);
+			while (next != tvec.cend) {
 				if (tval >= *curr && tval <= *next)
 					j = std::distance(tvec.cbegin(), curr);
+				curr = next;
+				std::advance(next, 1);
 			}
 		}
-		return ((tval - tvec.at(j) + ref.at(j)) * (ref.at(j+1) - ref.at(j)) /
-				(tvec.at(j+1) - tvec.at(j)));
+		return (tval - tvec.at(j)) * (ref.at(j+1) - ref.at(j)) /
+				(tvec.at(j+1) - tvec.at(j)) + ref.at(j);
 	}
 
 	/**
