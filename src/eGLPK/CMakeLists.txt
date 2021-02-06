@@ -8,8 +8,7 @@ if(GLPK_FOUND)
   add_library(${PROJECT_NAME} STATIC ${PROJECT_NAME}.cpp)
 
   target_link_libraries(${PROJECT_NAME}
-    PUBLIC TrajectoryOptimizer
-    PRIVATE re2 ${GLPK_LIBRARY})
+    PUBLIC TrajectoryOptimizer ${GLPK_LIBRARY})
 
   target_include_directories(${PROJECT_NAME} PUBLIC ${GLPK_INCLUDE_DIRS})
 else()

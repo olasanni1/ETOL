@@ -8,8 +8,7 @@ if(OMPL_FOUND)
   add_library(${PROJECT_NAME} STATIC ${PROJECT_NAME}.cpp)
 
   target_link_libraries(${PROJECT_NAME}
-    PUBLIC TrajectoryOptimizer
-    PRIVATE ${OMPL_LIBRARIES} ${OMPLAPP_LIBRARIES} re2)
+    PUBLIC TrajectoryOptimizer ${OMPL_LIBRARIES} ${OMPLAPP_LIBRARIES})
 
   target_include_directories(${PROJECT_NAME} PUBLIC ${OMPL_INCLUDE_DIRS})
 else()
