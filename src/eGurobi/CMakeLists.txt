@@ -8,9 +8,8 @@ if(GUROBI_FOUND)
   add_library(${PROJECT_NAME} STATIC ${PROJECT_NAME}.cpp)
 
   target_link_libraries(${PROJECT_NAME}
-    PUBLIC TrajectoryOptimizer
-    PRIVATE ${GUROBI_LIBRARIES} 
-    $<IF:$<BOOL:${TBB_FOUND}>,TBB::tbb,tbb>)
+  PUBLIC TrajectoryOptimizer ${GUROBI_LIBRARIES}
+           $<IF:$<BOOL:${TBB_FOUND}>,TBB::tbb,tbb>)
 
   target_include_directories(${PROJECT_NAME} PUBLIC ${GUROBI_INCLUDE_DIRS})
 else()
