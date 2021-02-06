@@ -251,7 +251,7 @@ class TrajectoryOptimizer {
 		} else if (tval >= tvec.front()) {
 			auto curr = tvec.cbegin();
 			auto next = std::next(curr, 1);
-			while (next != tvec.cend) {
+			while (next != tvec.cend()) {
 				if (tval >= *curr && tval <= *next)
 					j = std::distance(tvec.cbegin(), curr);
 				curr = next;
