@@ -10,8 +10,7 @@ if(PYTHON_EXECUTABLE)
     add_library(${PROJECT_NAME} STATIC ${PROJECT_NAME}.cpp)
 
     target_link_libraries(${PROJECT_NAME}
-      PUBLIC TrajectoryOptimizer
-      PRIVATE pybind11::embed)
+      PUBLIC TrajectoryOptimizer pybind11::embed)
   else()
     message("Skipping eDymos...")
     message("To build this, install pybind11, openmdao, and dymos")

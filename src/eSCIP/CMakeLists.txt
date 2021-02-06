@@ -8,7 +8,7 @@ if(SCIP_FOUND)
   add_library(${PROJECT_NAME} STATIC ${PROJECT_NAME}.cpp)
 
   target_link_libraries(${PROJECT_NAME}
-    PUBLIC TrajectoryOptimizer re2 ${SCIP_LIBRARIES})
+    PUBLIC TrajectoryOptimizer ${SCIP_LIBRARIES})
 
   target_include_directories(${PROJECT_NAME}
     PUBLIC ${SCIP_INCLUDE_DIRS} ${LIBM})

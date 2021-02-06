@@ -16,16 +16,14 @@ if(PSOPT_FOUND)
 
   target_link_libraries(${PROJECT_NAME} 
     PUBLIC TrajectoryOptimizer
-    PRIVATE PSOPT PkgConfig::adolc PkgConfig::ipopt Eigen3::Eigen)
+           PSOPT PkgConfig::adolc PkgConfig::ipopt Eigen3::Eigen)
   
   if(snopt7_FOUND)
-    target_link_libraries(${PROJECT_NAME} PRIVATE gfortran PkgConfig::snopt7) 
+    target_link_libraries(${PROJECT_NAME} PUBLIC gfortran PkgConfig::snopt7) 
   endif()
   
   if(OpenMP_FOUND)
-    set_target_properties(${PROJECT_NAME} PROPERTIES COMPILE_FLAGS
-      ${OpenMP_CXX_FLAGS})
-    target_link_libraries(${PROJECT_NAME} PRIVATE ${OpenMP_C_FLAGS})
+    target_link_libraries(${PROJECT_NAME} PUBLIC OpenMP::OpenMP_CXX)
   endif()  
 else()
   message("Skipping ePSOPT...")
