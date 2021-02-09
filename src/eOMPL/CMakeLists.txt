@@ -11,6 +11,7 @@ if(OMPL_FOUND)
     PUBLIC TrajectoryOptimizer ${OMPL_LIBRARIES} ${OMPLAPP_LIBRARIES})
 
   target_include_directories(${PROJECT_NAME} PUBLIC ${OMPL_INCLUDE_DIRS})
+  target_link_directories(${PROJECT_NAME} PUBLIC ${OMPL_LIBRARY_DIRS})
 else()
   message("Skipping eOMPL...")
   message("To build eOMPL, install OMPL")
