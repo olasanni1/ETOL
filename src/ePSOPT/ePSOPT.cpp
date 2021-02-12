@@ -55,10 +55,10 @@ void ePSOPT::setup() {
             (this->getNSteps() + 1)).finished();
 
     if (this->_problem.phases(1).guess.controls.rows() < 1)
-        this->_problem.phases(1).guess.controls = ::zeros(getNStates(),
+        this->_problem.phases(1).guess.controls = ::zeros(getNControls(),
                                                             getNSteps()+1);
     if (this->_problem.phases(1).guess.states.rows() < 1)
-        this->_problem.phases(1).guess.states = ::zeros(getNControls(),
+        this->_problem.phases(1).guess.states = ::zeros(getNStates(),
                                                         getNSteps()+1);
     if (this->_problem.phases(1).guess.time.rows() < 1)
         this->_problem.phases(1).guess.time = ::linspace(0.,
