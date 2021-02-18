@@ -1114,8 +1114,6 @@ void TrajectoryOptimizer::loadConfigs(const char* filepath) {
     xmlFree(nodes);
     xmlXPathFreeObject(root);
     xmlFreeDoc(doc);
-    xmlCleanupParser();
-    xmlMemoryDump();
 }
 
 void TrajectoryOptimizer::saveConfigs(const char* filepath) {
