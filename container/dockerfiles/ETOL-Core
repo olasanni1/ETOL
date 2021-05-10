@@ -12,9 +12,10 @@ SHELL ["/bin/bash", "-c"]
 
 # Install dependenices
 RUN apt-get update \
- && apt-get install -y \
+ && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
+    ca-certificates \
     git \
     ninja-build \
     cmake \
@@ -39,3 +40,4 @@ RUN git clone https://github.com/olasanni1/ETOL.git \
 CMD echo "Extensible Trajectory Optimization Library (ETOL)" \
  && echo "Built core library..." \
  && ls /root/ETOL/build/bin/
+
