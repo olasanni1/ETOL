@@ -1,0 +1,41 @@
+# ETOL for Ubuntu 20.04
+# VERSION 0.1.0
+
+FROM ubuntu:20.04 as foundation
+
+MAINTAINER Olatunde Sanni
+
+LABEL Description="This image creates ETOL's core library for Ubuntu 20.04" Version="0.1.0"
+
+ENV DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-c"]
+
+# Install dependenices
+RUN apt-get update \
+ && apt-get install -y \
+    gcc \
+    g++ \
+    git \
+    ninja-build \
+    cmake \
+    libxml2-dev \
+    libboost-thread-dev \
+    libboost-system-dev \
+    libboost-filesystem-dev \
+    libgnuplot-iostream-dev \
+    libcgal-dev \
+    libre2-dev \
+ && apt-get clean
+
+WORKDIR /root
+
+RUN git clone https://github.com/olasanni1/ETOL.git \
+ && cd ETOL \
+ && mkdir build \
+ && cd build  \
+ && cmake ../src -G "Ninja" -DCMAKE_BUILD_TYPE=Release \
+ && ninja
+
+CMD echo "Extensible Trajectory Optimization Library (ETOL)" \
+ && echo "Built core library..." \
+ && ls /root/ETOL/build/bin/
