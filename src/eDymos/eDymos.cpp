@@ -634,7 +634,7 @@ class eDymosODE(om.ExplicitComponent):
         self.add_input('t', val=np.ones(nn), desc='time', units=None)
         self.add_input('jval', val=np.ones(nn), desc='objective', units=None)
         self.add_output('jdot', val=np.ones(nn), desc='derivative of objective',
-                        units=None)
+                        units="1/s")
         self.declare_partials(of='jdot', wrt='t', rows=r, cols=c, val=0.0)
         self.declare_partials(of='jdot', wrt='jval', rows=r, cols=c, val=0.0)
 
@@ -653,7 +653,7 @@ class eDymosODE(om.ExplicitComponent):
         for i in range(ns):           
             dname = 'x' + str(i) + 'dot'
             self.add_output(dname, val=np.ones(nn),
-                        desc='output', units=None)
+                        desc='output', units="1/s")
             self.declare_partials(of=dname, wrt='t', rows=r, cols=c, val=0.0)
             self.declare_partials(of=dname, wrt='jval', rows=r, cols=c, val=0.0)
             for j in range(ns):
