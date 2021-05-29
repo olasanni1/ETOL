@@ -44,7 +44,7 @@ eDymos::eDymos() :  eDymos::scoped_interpreter(true),
                     _np(py::module::import("numpy")),
                     _om(py::module::import("openmdao.api")),
                     _dm(py::module::import("dymos")),
-                    optimizer_("SNOPT"), max_iter_(1000), with_coloring_(true),
+                    optimizer_("IPOPT"), max_iter_(1000), with_coloring_(true),
                     _alg(_om.attr("Problem")("model"_a = _om.attr("Group")())) ,
                     _sol(_alg.attr("model").attr("add_subsystem")("traj",
                             _dm.attr("Trajectory")())),
@@ -354,8 +354,8 @@ void eDymos::setup() {
 }
 
 void eDymos::solve() {
-    _dm.attr("run_problem")(_alg, "refine"_a = mesh_refine_,
-            "refine_iteration_limit"_a = max_mesh_iter_);
+    _dm.attr("run_problem")(_alg, "refine_iteration_limit"_a =
+    		mesh_refine_ ? max_mesh_iter_ : 0);
 
     // Get score from Dymos
     py::list jval_list = _alg.attr("get_val")(
@@ -471,12 +471,12 @@ void eDymos::setProb() {
             "fix_initial"_a = true, "fix_duration"_a = true,
             // "initial_bounds"_a = py::make_tuple(0., 0.),
             // "duration_bounds"_a = py::make_tuple(tf, tf),
-            "units"_a = nullptr, "targets"_a = "t");
+            "units"_a = "s", "targets"_a = "t");
 
     // Set the objective variable as a state
     _prob.attr("add_state")("jval", "rate_source"_a = "jdot",
         "fix_initial"_a = true, "fix_final"_a = false, "units"_a = nullptr,
-        "solve_segments"_a = true, "lower"_a = 0.0, "targets"_a = "jval");
+        "solve_segments"_a = "forward", "lower"_a = 0.0, "targets"_a = "jval");
 
     // Set the states
     state_t::iterator it_xlo = this->getXlower().begin();
@@ -489,7 +489,7 @@ void eDymos::setProb() {
                 "rate_source"_a = getDerivName(j).c_str(),
                 "fix_initial"_a = true,
                 "fix_final"_a = false,
-                "solve_segments"_a = true,
+                "solve_segments"_a = "forward",
                 "targets"_a = getStateName(j).c_str());
         _prob.attr("add_path_constraint")(
                 "name"_a = getStateName(j).c_str(),
