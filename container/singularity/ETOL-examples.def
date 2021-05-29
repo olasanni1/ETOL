@@ -1,0 +1,188 @@
+Bootstrap: library
+From: ubuntu:18.04
+Stage: build
+
+%post
+    apt-get -y update \
+ && apt-get -y install apt-transport-https ca-certificates gnupg software-properties-common wget \
+ && wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null \
+ && add-apt-repository "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc) main universe restricted multiverse" \
+ && apt-get -y update \
+ && apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main' \
+ && apt-get -y install --no-install-recommends \
+    gcc \
+    g++ \
+    ca-certificates \
+    git \
+    ninja-build \
+    cmake \
+    libxml2-dev \
+    libboost-thread-dev \
+    libboost-system-dev \
+    libboost-filesystem-dev \
+    libgnuplot-iostream-dev \
+    libcgal-dev \
+    libre2-dev \
+ && apt-get clean
+    cd /opt \
+ && git clone https://github.com/olasanni1/ETOL.git
+    mkdir -p /opt/ETOL/build \
+ && cd /opt/ETOL/build
+    cmake ../src -G "Ninja" -DCMAKE_BUILD_TYPE=Release
+    ninja
+    NOW=`date`
+    echo "export NOW=\"${NOW}\"" >> $SINGULARITY_ENVIRONMENT
+
+%runscript
+    echo "Extensible Trajectory Optimization Library (ETOL)"
+    echo "Built library..."
+    ls /opt/ETOL/build/bin
+    echo "Container was created $NOW"
+    exec echo "$@"
+
+%labels
+    Author Olatunde Sanni
+    Version v0.1.0
+
+%help
+    This image creates ETOL examples for Ubuntu 18.04.
+
+
+##############################
+# GLPK Example
+##############################
+
+%apprun glpk
+#    exec echo "Running GLPK Example"
+    /opt/ETOL/build/bin/etol_glpk_example1 \
+    /opt/ETOL/resource/configs/mip_2d_ex1.xml
+
+%applabels glpk
+    Author Olatunde Sanni
+    Version v0.1.0
+
+%appinstall glpk
+    apt-get update \
+ && apt-get install -y --no-install-recommends \
+    glpk-utils \
+    libglpk-dev \
+ && apt-get clean
+    cd /opt/ETOL/build
+    cmake ../src -G "Ninja" -DCMAKE_BUILD_TYPE=Release
+    ninja
+
+%apphelp glpk
+    This app tests ETOL's GLPK interface
+
+##############################
+# OMPL Example
+##############################
+
+%apprun ompl
+    /opt/ETOL/build/bin/etol_ompl_example1 \
+    /opt/ETOL/resource/configs/mip_2d_ex1.xml
+
+%applabels ompl
+    Author Olatunde Sanni
+    Version v0.1.0
+
+%appinstall ompl
+    apt-get update \
+ && apt-get install -y --no-install-recommends \
+    libompl-dev \
+ && apt-get clean
+    cd /opt/ETOL/build
+    cmake ../src -G "Ninja" -DCMAKE_BUILD_TYPE=Release
+    ninja
+
+%apphelp ompl
+    This app tests ETOL's OMPL interface
+
+
+##############################
+# PSOPT Example
+##############################
+
+%apprun psopt
+    /opt/ETOL/build/bin/etol_psopt_example1 \
+    /opt/ETOL/resource/configs/ocp_2d_ex1.xml
+
+%applabels psopt
+    Author Olatunde Sanni
+    Version v0.1.0
+
+%appinstall psopt
+    apt-get update \
+ && apt-get install -y --no-install-recommends \
+    gfortran \
+    coinor-libipopt-dev \
+    libadolc-dev \
+    libeigen3-dev \
+    libblas-dev \
+    liblapack-dev \
+ && apt-get clean
+    cd /opt \
+ && git clone https://github.com/PSOPT/psopt.git
+    cd /opt/psopt \
+ && git checkout tags/5.0.0 \
+ && mkdir build && cd build \
+ && cmake .. -G "Ninja" -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr/local \
+ && ninja \
+ && ninja install \
+ && rm -rf /opt/psopt
+    cd /opt/ETOL/build \
+ && cmake ../src -G "Ninja" -DCMAKE_BUILD_TYPE=Release \
+ && ninja
+
+%apphelp psopt
+    This app tests ETOL's PSOPT interface
+
+##############################
+# Dymos Example
+##############################
+
+%apprun dymos
+    export LD_LIBRARY_PATH=${LD_LIBRARY_PATH:+${LD_LIBRARY_PATH}:}/usr/local/lib \
+ && /opt/ETOL/build/bin/etol_dymos_example1 \
+    /opt/ETOL/resource/configs/ocp_2d_ex1.xml
+
+%applabels dymos
+    Author Olatunde Sanni
+    Version v0.1.0
+
+%appinstall dymos
+    apt-get -y update \
+ && apt-get -y install --no-install-recommends \
+    python-pip \
+    python3 \
+    python3-dev \
+    python3-pip \
+    python3-setuptools \
+    libeigen3-dev \
+    gfortran \
+    curl \
+    swig \
+    make \
+    patch \
+    pkg-config \
+    libblas-dev \
+    liblapack-dev \
+ && apt-get clean
+    python3 -m pip install \
+    "pybind11[global]" \
+    openmdao[all] \
+    git+https://github.com/OpenMDAO/dymos.git
+    python3 -m pip install pip --upgrade --user
+    mkdir -p /opt/pyoptsparse \
+ && cd /opt/pyoptsparse \
+ && wget https://raw.githubusercontent.com/OpenMDAO/build_pyoptsparse/master/build_pyoptsparse.sh \
+ && chmod u+x /opt/pyoptsparse/build_pyoptsparse.sh \
+ &&  /opt/pyoptsparse/build_pyoptsparse.sh -p /usr/local -b v2.6.2
+    cd /opt/ETOL/build \
+ && cmake ../src -G "Ninja" -DCMAKE_BUILD_TYPE=Release \
+    -DPYTHON_EXECUTABLE=$(which python3) \
+ && ninja
+
+%apphelp dymos
+    This app tests ETOL's Dymos interface
