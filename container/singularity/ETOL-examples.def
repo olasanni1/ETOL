@@ -1,5 +1,5 @@
 Bootstrap: library
-From: ubuntu:18.04
+From: ubuntu:20.04
 Stage: build
 
 %environment
@@ -9,7 +9,8 @@ Stage: build
     export RESULT_DIR
 
 %post
-    apt-get -y update \
+    export DEBIAN_FRONTEND=noninteractive \
+ && apt-get -y update \
  && apt-get -y install --no-install-recommends \
     apt-transport-https \
     ca-certificates \
@@ -19,7 +20,7 @@ Stage: build
  && wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null \
  && add-apt-repository \
     "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc) main universe restricted multiverse" \
- && apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main' \
+ && apt-add-repository "deb https://apt.kitware.com/ubuntu $(lsb_release -sc) main" \
  && apt-get -y update \
  && apt-get -y install --no-install-recommends \
     gcc \
@@ -57,7 +58,7 @@ Stage: build
     Version v0.1.0
 
 %help
-    This image creates ETOL examples for Ubuntu 18.04.
+    This image creates ETOL examples for Ubuntu 20.04.
 
 
 ##############################
@@ -182,7 +183,6 @@ Stage: build
 %appinstall dymos
     apt-get -y update \
  && apt-get -y install --no-install-recommends \
-    python-pip \
     python3 \
     python3-dev \
     python3-pip \
