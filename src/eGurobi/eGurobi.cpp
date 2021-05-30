@@ -26,8 +26,13 @@ eGurobi::eGurobi()
     : eGurobi::TrajectoryOptimizer(), env_(NULL), model_(NULL),
       _nConstr(ATOMIC_VAR_INIT(0)), _eGRB(NULL), x0_changed_(true),
       xf_changed_(true), reset_(true) {
-    this->env_.reset(new GRBEnv());
-    this->model_.reset(new GRBModel(*env_));
+    try {
+        this->env_.reset(new GRBEnv());
+        this->model_.reset(new GRBModel(*env_));
+	} catch(GRBException& e) {
+	    this->_eGRB = &e;
+	    this->errorHandler();
+	}
 }
 
 // Virtual Members
