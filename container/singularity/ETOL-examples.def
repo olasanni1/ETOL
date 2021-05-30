@@ -2,17 +2,28 @@ Bootstrap: library
 From: ubuntu:18.04
 Stage: build
 
+%environment
+    # Bind RESULT_DIR to a host path
+    # e.g. --bind $PWD/results:/opt/ETOL/build/results:rw
+    RESULT_DIR=/opt/ETOL/build/results
+    export RESULT_DIR
+
 %post
     apt-get -y update \
- && apt-get -y install apt-transport-https ca-certificates gnupg software-properties-common wget \
+ && apt-get -y install --no-install-recommends \
+    apt-transport-https \
+    ca-certificates \
+    gnupg \
+    software-properties-common \
+    wget \
  && wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null \
- && add-apt-repository "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc) main universe restricted multiverse" \
- && apt-get -y update \
+ && add-apt-repository \
+    "deb http://archive.ubuntu.com/ubuntu $(lsb_release -sc) main universe restricted multiverse" \
  && apt-add-repository 'deb https://apt.kitware.com/ubuntu/ bionic main' \
+ && apt-get -y update \
  && apt-get -y install --no-install-recommends \
     gcc \
     g++ \
-    ca-certificates \
     git \
     ninja-build \
     cmake \
@@ -23,19 +34,20 @@ Stage: build
     libgnuplot-iostream-dev \
     libcgal-dev \
     libre2-dev \
- && apt-get clean
-    cd /opt \
- && git clone https://github.com/olasanni1/ETOL.git
-    mkdir -p /opt/ETOL/build \
- && cd /opt/ETOL/build
-    cmake ../src -G "Ninja" -DCMAKE_BUILD_TYPE=Release
-    ninja
-    NOW=`date`
-    echo "export NOW=\"${NOW}\"" >> $SINGULARITY_ENVIRONMENT
+ && apt-get clean \
+ && cd /opt \
+ && git clone https://github.com/olasanni1/ETOL.git \
+ && mkdir -p /opt/ETOL/build \
+ && cd /opt/ETOL/build \
+ && cmake ../src -G "Ninja" -DCMAKE_BUILD_TYPE=Release \
+ && ninja \
+ && mkdir -p /opt/ETOL/build/results \
+ && NOW=`date` \
+ && echo "export NOW=\"${NOW}\"" >> $SINGULARITY_ENVIRONMENT
 
 %runscript
     echo "Extensible Trajectory Optimization Library (ETOL)"
-    echo "Built library..."
+    echo "Container includes the following..."
     ls /opt/ETOL/build/bin
     echo "Container was created $NOW"
     exec echo "$@"
@@ -53,9 +65,11 @@ Stage: build
 ##############################
 
 %apprun glpk
-#    exec echo "Running GLPK Example"
-    /opt/ETOL/build/bin/etol_glpk_example1 \
-    /opt/ETOL/resource/configs/mip_2d_ex1.xml
+    echo "Running GLPK Example" \
+ && cd $RESULT_DIR \
+ && /opt/ETOL/build/bin/etol_glpk_example1 \
+    /opt/ETOL/resource/configs/mip_2d_ex1.xml \
+ && exec echo "App Finished!"
 
 %applabels glpk
     Author Olatunde Sanni
@@ -66,21 +80,26 @@ Stage: build
  && apt-get install -y --no-install-recommends \
     glpk-utils \
     libglpk-dev \
- && apt-get clean
-    cd /opt/ETOL/build
-    cmake ../src -G "Ninja" -DCMAKE_BUILD_TYPE=Release
-    ninja
+ && apt-get clean \
+ && cd /opt/ETOL/build \
+ && cmake ../src -G "Ninja" -DCMAKE_BUILD_TYPE=Release \
+ && ninja
 
 %apphelp glpk
-    This app tests ETOL's GLPK interface
+    This app tests ETOL's GLPK interface.  To retreive the optimal trajectories,
+    bind a host directory to /opt/ETOL/build/results e.g.
+         $ singularity run --fakeroot --bind $PWD/results:/opt/ETOL/build/results:rw --app glpk <SIF Path>
 
 ##############################
 # OMPL Example
 ##############################
 
 %apprun ompl
-    /opt/ETOL/build/bin/etol_ompl_example1 \
-    /opt/ETOL/resource/configs/mip_2d_ex1.xml
+    echo "Running OMPL Example" \
+ && cd $RESULT_DIR \
+ && /opt/ETOL/build/bin/etol_ompl_example1 \
+    /opt/ETOL/resource/configs/mip_2d_ex1.xml \
+ && exec echo "App Finished!"
 
 %applabels ompl
     Author Olatunde Sanni
@@ -90,13 +109,15 @@ Stage: build
     apt-get update \
  && apt-get install -y --no-install-recommends \
     libompl-dev \
- && apt-get clean
-    cd /opt/ETOL/build
-    cmake ../src -G "Ninja" -DCMAKE_BUILD_TYPE=Release
-    ninja
+ && apt-get clean \
+ && cd /opt/ETOL/build \
+ && cmake ../src -G "Ninja" -DCMAKE_BUILD_TYPE=Release \
+ && ninja
 
 %apphelp ompl
-    This app tests ETOL's OMPL interface
+    This app tests ETOL's OMPL interface.  To retreive the optimal trajectories,
+    bind a host directory to /opt/ETOL/build/results e.g.
+         $ singularity run --fakeroot --bind $PWD/results:/opt/ETOL/build/results:rw --app ompl <SIF Path>
 
 
 ##############################
@@ -104,8 +125,11 @@ Stage: build
 ##############################
 
 %apprun psopt
-    /opt/ETOL/build/bin/etol_psopt_example1 \
-    /opt/ETOL/resource/configs/ocp_2d_ex1.xml
+    echo "Running PSOPT Example" \
+ && cd $RESULT_DIR \
+ && /opt/ETOL/build/bin/etol_psopt_example1 \
+    /opt/ETOL/resource/configs/mip_2d_ex1.xml \
+ && exec echo "App Finished!"
 
 %applabels psopt
     Author Olatunde Sanni
@@ -120,32 +144,36 @@ Stage: build
     libeigen3-dev \
     libblas-dev \
     liblapack-dev \
- && apt-get clean
-    cd /opt \
- && git clone https://github.com/PSOPT/psopt.git
-    cd /opt/psopt \
+ && apt-get clean \
+ && cd /opt \
+ && git clone https://github.com/PSOPT/psopt.git \
+ &&  cd /opt/psopt \
  && git checkout tags/5.0.0 \
  && mkdir build && cd build \
  && cmake .. -G "Ninja" -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=/usr/local \
  && ninja \
  && ninja install \
- && rm -rf /opt/psopt
-    cd /opt/ETOL/build \
+ && rm -rf /opt/psopt \
+ && cd /opt/ETOL/build \
  && cmake ../src -G "Ninja" -DCMAKE_BUILD_TYPE=Release \
  && ninja
 
 %apphelp psopt
-    This app tests ETOL's PSOPT interface
+    This app tests ETOL's PSOPT interface. To retreive the optimal trajectories,
+    bind a host directory to /opt/ETOL/build/results e.g.
+         $ singularity run --fakeroot --bind $PWD/results:/opt/ETOL/build/results:rw --app psopt <SIF Path>
 
 ##############################
 # Dymos Example
 ##############################
 
 %apprun dymos
-    export LD_LIBRARY_PATH=${LD_LIBRARY_PATH:+${LD_LIBRARY_PATH}:}/usr/local/lib \
+    echo "Running Dymos Example" \
+ && cd $RESULT_DIR \
  && /opt/ETOL/build/bin/etol_dymos_example1 \
-    /opt/ETOL/resource/configs/ocp_2d_ex1.xml
+    /opt/ETOL/resource/configs/ocp_2d_ex1.xml \
+ && exec echo "App Finished!"
 
 %applabels dymos
     Author Olatunde Sanni
@@ -168,8 +196,8 @@ Stage: build
     pkg-config \
     libblas-dev \
     liblapack-dev \
- && apt-get clean
-    python3 -m pip install \
+ && apt-get clean \
+ && python3 -m pip install \
     "pybind11[global]" \
     openmdao[all] \
     git+https://github.com/OpenMDAO/dymos.git
@@ -178,11 +206,77 @@ Stage: build
  && cd /opt/pyoptsparse \
  && wget https://raw.githubusercontent.com/OpenMDAO/build_pyoptsparse/master/build_pyoptsparse.sh \
  && chmod u+x /opt/pyoptsparse/build_pyoptsparse.sh \
- &&  /opt/pyoptsparse/build_pyoptsparse.sh -p /usr/local -b v2.6.2
-    cd /opt/ETOL/build \
+ &&  /opt/pyoptsparse/build_pyoptsparse.sh -p /usr/local -b v2.6.2 \
+ &&  cd /opt/ETOL/build \
  && cmake ../src -G "Ninja" -DCMAKE_BUILD_TYPE=Release \
     -DPYTHON_EXECUTABLE=$(which python3) \
  && ninja
 
+%appenv dymos
+    LD_LIBRARY_PATH=${LD_LIBRARY_PATH:+${LD_LIBRARY_PATH}:}/usr/local/lib
+    export LD_LIBRARY_PATH
+
 %apphelp dymos
-    This app tests ETOL's Dymos interface
+    This app tests ETOL's Dymos interface. To retreive the optimal trajectories,
+    bind a host directory to /opt/ETOL/build/results e.g.
+         $ singularity run --fakeroot --bind $PWD/results:/opt/ETOL/build/results:rw --app dymos <SIF Path>
+
+##############################
+# Gurobi Example
+##############################
+
+%apprun gurobi
+    echo "Running Gurobi Example" \
+ && cd $RESULT_DIR \
+ && /opt/ETOL/build/bin/etol_gurobi_example1 \
+    /opt/ETOL/resource/configs/mip_2d_ex1.xml \
+ && exec echo "App Finished!"
+
+%applabels gurobi
+    Author Olatunde Sanni
+    Version v0.1.0
+
+%appinstall gurobi
+    GRB_VERSION=9.1.1 \
+ && GRB_SHORT_VERSION=9.1 \
+ && apt-get -y update \
+ && apt-get -y install --no-install-recommends \
+    make \
+ && apt-get clean \
+ && cd /opt \
+ && wget -v https://packages.gurobi.com/${GRB_SHORT_VERSION}/gurobi${GRB_VERSION}_linux64.tar.gz \
+ && tar -xvf gurobi${GRB_VERSION}_linux64.tar.gz  \
+ && rm -f gurobi${GRB_VERSION}_linux64.tar.gz \
+ && mv -f gurobi* gurobi \
+ && rm -rf gurobi/linux64/docs \
+ && export GUROBI_HOME=/opt/gurobi/linux64 \
+ && export PATH=${PATH:+${PATH}:}$GUROBI_HOME/bin \
+ && export LD_LIBRARY_PATH=${LD_LIBRARY_PATH:+${LD_LIBRARY_PATH}:}$UROBI_HOME/lib \
+ && cd /opt/gurobi/linux64/src/build \
+ && make \
+ && mv -f ./libgurobi_c++.a ${GUROBI_HOME}/lib/libgurobi_g++5.2.a \
+ && rm -rf ${GUROBI_HOME}/examples \
+ && rm -rf ${GUROBI_HOME}/matlab \
+ && rm -rf ${GUROBI_HOME}/R \
+ && rm -rf ${GUROBI_HOME}/src
+    cd /opt/ETOL/build \
+ && cmake ../src -G "Ninja" -DCMAKE_BUILD_TYPE=Release \
+ && ninja
+
+%appenv gurobi
+    GUROBI_HOME=/opt/gurobi/linux64
+    PATH=${PATH:+${PATH}:}$GUROBI_HOME/bin
+    LD_LIBRARY_PATH=${LD_LIBRARY_PATH:+${LD_LIBRARY_PATH}:}$GUROBI_HOME/lib
+    export PATH
+    export LD_LIBRARY_PATH
+
+%apphelp gurobi
+    This app tests ETOL's Gurobi interface. It requires a Gurobi license file. 
+    Your gurobi license file should be provided with a bind path. For example,
+
+        $ singularity run --fakeroot --bind $PWD/gurobi.lic:/opt/gurobi/gurobi.lic:ro --app gurobi <SIF Path>
+
+    To retreive the optimal trajectories, bind a host directory to
+    /opt/ETOL/build/results e.g.
+
+        $ singularity run --fakeroot --bind $PWD/results:/opt/ETOL/build/results:rw --bind $PWD/gurobi.lic:/opt/gurobi/gurobi.lic:ro --app gurobi <SIF Path>
