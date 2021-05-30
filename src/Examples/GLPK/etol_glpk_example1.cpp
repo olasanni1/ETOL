@@ -78,21 +78,26 @@ int main(int argc, char** argv) {
     t->solve();
 
     // Result
-    std::cout << "\n!!!!!!!!!!!!!!!!!Results!!!!!!!!!!!!!!!!!" << std::endl;
-    std::cout << "Minimization Score:\t" << t->getScore() << std::endl;
-    std::cout << "Plotting..." << std::endl;
-    ETOL::TrajectoryOptimizer::plotXY_wExclZones(t->getXtraj(),
-                                                    t->getObstacles());
+    printf("\n!!!!!!!!!!!!!!!!!Results!!!!!!!!!!!!!!!!!\n");
+    printf("Minimization Score:\t%f\n", t->getScore());
+    printf("State variables saved in %s\n", ETOL::TrajectoryOptimizer::save(
+            t->getXtraj(), "state_glpk1.csv").c_str());
+    printf("Control variables saved in %s\n", ETOL::TrajectoryOptimizer::save(
+            t->getUtraj(), "control_glpk1.csv").c_str());
+//    std::cout << "Plotting..." << std::endl;
+//    ETOL::TrajectoryOptimizer::plotXY_wExclZones(t->getXtraj(),
+//                                                    t->getObstacles());
 //    ETOL::TrajectoryOptimizer::animate2D(t->getXtraj(), 1, false,
 //            "animation.mp4", t->getObstacles(), t->getTracks());
-
-    t->plotX(0);
-    t->plotX(1);
-    t->plotU(0);
-    t->plotU(1);
+//
+//    t->plotX(0);
+//    t->plotX(1);
+//    t->plotU(0);
+//    t->plotU(1);
 
     // Release resources e.g. memory
     t->close();
+    printf("\n!!!!!!!!!!!!!!Graceful Exit!!!!!!!!!!!!!!\n");
 
     return EXIT_SUCCESS;
 }
