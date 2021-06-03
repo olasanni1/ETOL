@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.5)
 
 project(ePSOPT)
 
+if(DISABLE_PSOPT)
+  return()
+endif()
+
 find_package(PSOPT)
 
 if(PSOPT_FOUND)

@@ -1,3 +1,7 @@
+if(DISABLE_EXAMPLES)
+  return()
+endif()
+
 SET (EX_SUBDIRS Gurobi PSOPT GLPK OMPL Dymos SCIP)
 
 FOREACH(subdir ${EX_SUBDIRS})

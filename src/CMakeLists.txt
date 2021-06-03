@@ -23,6 +23,13 @@ include_directories(${PROJECT_SOURCE_DIR}/../include)
 SET (SUBDIRS TrajectoryOptimizer eGurobi ePSOPT eGLPK eOMPL eDymos eSCIP
              Examples)
 
+option(DISABLE_GLPK "Disable GLPK interface" OFF)
+option(DISABLE_GUROBI "Disable Gurobi interface" OFF)
+option(DISABLE_SCIP "Disable SCIP interface" OFF)
+option(DISABLE_PSOPT "Disable PSOPT interface" OFF)
+option(DISABLE_DYMOS "Disable Dymos interface" OFF)
+option(DISABLE_OMPL "Disable OMPL interface" OFF)
+option(DISABLE_EXAMPLES "Disable ETOL examples" OFF)
 FOREACH(subdir ${SUBDIRS})
   ADD_SUBDIRECTORY(${CMAKE_CURRENT_SOURCE_DIR}/${subdir})
 ENDFOREACH()

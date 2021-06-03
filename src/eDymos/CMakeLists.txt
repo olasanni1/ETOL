@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.5)
 
 project(eDymos)
 
+if(DISABLE_DYMOS)
+  return()
+endif()
 
 if(PYTHON_EXECUTABLE)
   find_package(pybind11)

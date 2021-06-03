@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.5)
 
 project(eGLPK)
 
+if (DISABLE_GLPK)
+  return()
+endif()
+
 find_package(GLPK)
 
 if(GLPK_FOUND)

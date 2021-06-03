@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.5)
 
 project(eOMPL)
 
+if(DISABLE_OMPL)
+  return()
+endif()
+
 find_package(ompl)
 
 if(OMPL_FOUND)

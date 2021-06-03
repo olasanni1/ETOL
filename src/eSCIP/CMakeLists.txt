@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.5)
 
 project(eSCIP)
 
+if(DISABLE_SCIP)
+  return()
+endif()
+
 find_package(SCIP)
 
 if(SCIP_FOUND)

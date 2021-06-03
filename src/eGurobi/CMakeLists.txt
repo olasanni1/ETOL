@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.5)
 
 project(eGurobi)
 
+if (DISBALE_GUROBI)
+  return()
+endif()
+
 find_package(GUROBI)
 find_package(TBB)
 if(GUROBI_FOUND)
