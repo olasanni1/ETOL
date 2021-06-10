@@ -102,6 +102,7 @@ void eGurobi::setup() {
             this->addDyn();
             this->addConstr();
             this->addObj();
+            this->model_->set(GRB_IntParam_OutputFlag, 0);
         } else {
             if (x0_changed_) {
                 this->changeX0();
@@ -132,6 +133,7 @@ void eGurobi::solve() {
 
 void eGurobi::debug() {
     this->model_->write("debug.lp");
+    this->model_->set(GRB_IntParam_OutputFlag, 1);
     std::cout << "Debug information written to 'debug.lp'" << std::endl;
 }
 
