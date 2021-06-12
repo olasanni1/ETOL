@@ -86,12 +86,6 @@ const size_t eGurobi::getNConstr() const {
 void eGurobi::setup() {
     // Vector size must match number of states
     // Fill unused vector entries with nan
-    assert(this->getX0().size() == this->getNStates());
-    assert(this->getXf().size() == this->getNStates());
-    assert(this->getXlower().size() == this->getNStates());
-    assert(this->getXupper().size() == this->getNStates());
-    assert(this->getXvartype().size() == this->getNStates());
-
     try {
         if (reset_) {
             this->model_.reset(new GRBModel(*env_));
@@ -103,6 +97,7 @@ void eGurobi::setup() {
             this->addConstr();
             this->addObj();
             this->model_->set(GRB_IntParam_OutputFlag, 0);
+            this->model_->set(GRB_IntParam_UpdateMode, 0);
         } else {
             if (x0_changed_) {
                 this->changeX0();
@@ -246,10 +241,10 @@ fout_grb_t eGurobi::_pathConstr(const size_t &tIdx, const size_t &kIdx) {
 void eGurobi::errorHandler() {
     TrajectoryOptimizer::errorHandler();
     if (this->_eGRB != NULL) {
-        std::string msg = this->_eGRB->getMessage();
-        fprintf(stderr, "%s", msg.c_str());
-        assert(true);
-        exit(EXIT_FAILURE);
+        std::cerr << "Gurobi Error: " << this->_eGRB->getErrorCode()
+                << std::endl;
+        std::cerr << this->_eGRB->getMessage() << std::endl;
+        assert(false);
     }
 }
 
@@ -479,8 +474,8 @@ void eGurobi::changeX0() {
                 [this, &it](const std::string& name) {
             this->model_->getConstrByName(name).set(
                     GRB_DoubleAttr_RHS, *(it++));
-            this->model_->update();
         });
+        this->model_->update();
     } catch (GRBException& ex) {
         this->_eGRB = &ex;
         errorHandler();
@@ -495,7 +490,6 @@ void eGurobi::changeXf() {
         [this, &it_xf, &it_xtol](const std::string& name) {
         this->model_->getConstrByName(name).set(GRB_DoubleAttr_RHS,
                 *(it_xf++) + *(it_xtol++));
-        this->model_->update();
     });
     it_xf = this->getXf().begin();
     it_xtol = this->getXtol().begin();
@@ -504,8 +498,8 @@ void eGurobi::changeXf() {
         [this, &it_xf, &it_xtol](const std::string& name) {
         this->model_->getConstrByName(name).set(GRB_DoubleAttr_RHS,
                 *(it_xf++) - *(it_xtol++));
-        this->model_->update();
     });
+    this->model_->update();
 }
 
 // Overriding Setters

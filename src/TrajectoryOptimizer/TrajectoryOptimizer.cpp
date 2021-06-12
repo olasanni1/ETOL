@@ -32,6 +32,7 @@
 #include <cfloat>
 #include <fstream>
 #include <iostream>
+#include <exception>
 #include <xmlutils.hpp>
 #include <ETOL/TrajectoryOptimizer.hpp>
 
@@ -83,77 +84,92 @@ TrajectoryOptimizer::TrajectoryOptimizer() {
  */
 region_t TrajectoryOptimizer::genRegion(border_t* border) {
     region_t region;
+    try {
+        typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
+        typedef CGAL::Partition_traits_2<K>                     Traits;
+        typedef Traits::Polygon_2                               Polygon_2;
+        typedef std::list<Polygon_2>                            Polygon_list;
 
-    typedef CGAL::Exact_predicates_inexact_constructions_kernel K;
-    typedef CGAL::Partition_traits_2<K>                         Traits;
-    typedef Traits::Polygon_2                                   Polygon_2;
-    typedef std::list<Polygon_2>                                Polygon_list;
+        Polygon_2                                               polygon;
+        Polygon_list                                            partition_polys;
+        border_t::iterator                                      it;
+        std::list<Polygon_2>::const_iterator                    poly_it;
 
-    Polygon_2                                                   polygon;
-    Polygon_list                                                partition_polys;
-    border_t::iterator                                          it;
-    std::list<Polygon_2>::const_iterator                        poly_it;
+        // Add corners to polygon object
+        for (it = border->begin(); it != border->end(); it++)
+            polygon.push_back(Traits::Point_2((*it).at(0), (*it).at(1)));
 
-    // Add corners to polygon object
-    for (it = border->begin(); it != border->end(); it++)
-        polygon.push_back(Traits::Point_2((*it).at(0), (*it).at(1)));
-
-    // Compute polygon partitions
-    CGAL::optimal_convex_partition_2(polygon.vertices_begin(),
-                                    polygon.vertices_end(),
-                                    std::back_inserter(partition_polys));
-
-    // Find lower and upper segments
-    for (poly_it = partition_polys.begin(); poly_it != partition_polys.end();
-            poly_it++) {
-        assert(CGAL::is_y_monotone_2((*poly_it).vertices_begin(),
-                                       (*poly_it).vertices_end()));
-        border_t seg1, seg2;
-        border_t::iterator seg1_it, seg2_it;
-        Polygon_2::Vertex_const_iterator v_it;
-        Polygon_2::Vertex_circulator c, cleft, cright;
-
-        // Find left and right vertices in circulator
-        c = (*poly_it).vertices_circulator();
-        if (c != NULL) {
-            do {
-                if (*c == (*(*poly_it).left_vertex()))
-                    cleft = c;
-                else if (*c == (*(*poly_it).right_vertex()))
-                    cright = c;
-            } while (++c != (*poly_it).vertices_circulator());
+        // Compute polygon partitions
+        try {
+            CGAL::optimal_convex_partition_2(polygon.vertices_begin(),
+                                        polygon.vertices_end(),
+                                        std::back_inserter(partition_polys));
+        } catch (...) {
+            border_t::reverse_iterator                                      rit;
+            partition_polys.clear();
+            polygon.clear();
+            for (rit = border->rbegin(); rit != border->rend(); rit++)
+                polygon.push_back(Traits::Point_2((*rit).at(0), (*rit).at(1)));
+            CGAL::optimal_convex_partition_2(polygon.vertices_begin(),
+                                        polygon.vertices_end(),
+                                        std::back_inserter(partition_polys));
         }
-        // Copy from left to right in + direction
-        c = cleft;
-        do {
-            seg1.push_back({(*c).x(), (*c).y(), 0.});
-        } while (++c != cright);
-        seg1.push_back({(*c).x(), (*c).y(), 0.});
-        // Copy from left to right in - direction
-        c = cright;
-        do {
-            seg2.push_back({(*c).x(), (*c).y(), 0.});
-        } while (++c !=cleft);
-        seg2.push_back({(*c).x(), (*c).y(), 0.});
-        seg2.reverse();
 
         // Find lower and upper segments
-        v_it = (*poly_it).top_vertex();
-        corner_t vtop = {(*v_it).x(), (*v_it).y(), 0.0};
-        seg1_it = std::find(seg1.begin(), seg1.end(), vtop);
-        seg2_it = std::find(seg2.begin(), seg2.end(), vtop);
-        if (seg1_it != seg1.end() && seg2_it != seg2.end()) {
-            v_it = (*poly_it).bottom_vertex();
-            corner_t vbottom = {(*v_it).x(), (*v_it).y(), 0.};
-            if (std::find(seg1.begin(), seg1.end(), vbottom) != seg1.end())
-                region.push_back({seg1, seg2});
-            else
+        for (poly_it = partition_polys.begin(); poly_it != partition_polys.end();
+                poly_it++) {
+            assert(CGAL::is_y_monotone_2((*poly_it).vertices_begin(),
+                                           (*poly_it).vertices_end()));
+            border_t seg1, seg2;
+            border_t::iterator seg1_it, seg2_it;
+            Polygon_2::Vertex_const_iterator v_it;
+            Polygon_2::Vertex_circulator c, cleft, cright;
+
+            // Find left and right vertices in circulator
+            c = (*poly_it).vertices_circulator();
+            if (c != NULL) {
+                do {
+                    if (*c == (*(*poly_it).left_vertex()))
+                        cleft = c;
+                    else if (*c == (*(*poly_it).right_vertex()))
+                        cright = c;
+                } while (++c != (*poly_it).vertices_circulator());
+            }
+            // Copy from left to right in + direction
+            c = cleft;
+            do {
+                seg1.push_back({(*c).x(), (*c).y(), 0.});
+            } while (++c != cright);
+            seg1.push_back({(*c).x(), (*c).y(), 0.});
+            // Copy from left to right in - direction
+            c = cright;
+            do {
+                seg2.push_back({(*c).x(), (*c).y(), 0.});
+            } while (++c !=cleft);
+            seg2.push_back({(*c).x(), (*c).y(), 0.});
+            seg2.reverse();
+
+            // Find lower and upper segments
+            v_it = (*poly_it).top_vertex();
+            corner_t vtop = {(*v_it).x(), (*v_it).y(), 0.0};
+            seg1_it = std::find(seg1.begin(), seg1.end(), vtop);
+            seg2_it = std::find(seg2.begin(), seg2.end(), vtop);
+            if (seg1_it != seg1.end() && seg2_it != seg2.end()) {
+                v_it = (*poly_it).bottom_vertex();
+                corner_t vbottom = {(*v_it).x(), (*v_it).y(), 0.};
+                if (std::find(seg1.begin(), seg1.end(), vbottom) != seg1.end())
+                    region.push_back({seg1, seg2});
+                else
+                    region.push_back({seg2, seg1});
+            } else if (seg1_it != seg1.end()) {
                 region.push_back({seg2, seg1});
-        } else if (seg1_it != seg1.end()) {
-            region.push_back({seg2, seg1});
-        } else {
-            region.push_back({seg1, seg2});
+            } else {
+                region.push_back({seg1, seg2});
+            }
         }
+    } catch (std::exception &e) {
+        std::cerr << e.what() << std::endl;
+        assert(false);
     }
     return region;
 }
