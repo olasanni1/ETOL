@@ -69,13 +69,17 @@ int main(int argc, char** argv) {
     // Results
     printf("\n!!!!!!!!!!!!!!!!!Results!!!!!!!!!!!!!!!!!\n");
     printf("Minimization Score:\t%f\n", t->getScore());
-    printf("Animating...\n");
-    ETOL::TrajectoryOptimizer::animate2D(t->getXtraj(), 10 , false,
-            "animation.mp4", t->getObstacles(), t->getTracks());
+    printf("State variables saved in %s\n", ETOL::TrajectoryOptimizer::save(
+            t->getXtraj(), "state_psopt1.csv").c_str());
+    printf("Control variables saved in %s\n", ETOL::TrajectoryOptimizer::save(
+            t->getUtraj(), "control_psopt1.csv").c_str());
+//    printf("Animating...\n");
+//    ETOL::TrajectoryOptimizer::animate2D(t->getXtraj(), 10 , false,
+//            "animation.mp4", t->getObstacles(), t->getTracks());
 
     // Gracefully release resources e.g. memory, file handles, etc
     t->close();
-
+    printf("\n!!!!!!!!!!!!!!Graceful Exit!!!!!!!!!!!!!!\n");
     return EXIT_SUCCESS;
 }
 

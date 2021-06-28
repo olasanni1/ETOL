@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
     printf("\nLoaded Configs\n");
     t->printConfigs();
 
-    // Set the objective function tht is minimized
+    // Set the objective function the is minimized
     ETOL::f_t obj = &objFunction;
     t->setObjective(&obj);
 
@@ -95,10 +95,14 @@ int main(int argc, char** argv) {
     // Results
     printf("\n!!!!!!!!!!!!!!!!!Results!!!!!!!!!!!!!!!!!\n");
     printf("Minimization Score:\t%f\n", t->getScore());
-    printf("Animating...\n");
-    fflush(stdout);
-    ETOL::TrajectoryOptimizer::animate2D(t->getXtraj(), 20, false,
-            "animate.mp4", t->getObstacles(), t->getTracks(), 0, 1, "Animate");
+    printf("State variables saved in %s\n", ETOL::TrajectoryOptimizer::save(
+            t->getXtraj(), "state_dymos1.csv").c_str());
+    printf("Control variables saved in %s\n", ETOL::TrajectoryOptimizer::save(
+                t->getUtraj(), "control_dymos1.csv").c_str());
+//    printf("Animating...\n");
+//    fflush(stdout);
+//    ETOL::TrajectoryOptimizer::animate2D(t->getXtraj(), 20, false,
+//            "animate.mp4", t->getObstacles(), t->getTracks(), 0, 1, "Animate");
     t->close();
     printf("\n!!!!!!!!!!!!!!Graceful Exit!!!!!!!!!!!!!!\n");
     return EXIT_SUCCESS;
