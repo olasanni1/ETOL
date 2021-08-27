@@ -106,6 +106,7 @@ class eGurobi : public TrajectoryOptimizer {
     void setObjective(f_t* objective);
     void setGradient(std::vector<f_t*> gradient);
     void setConstraints(std::vector<f_t*> constraints);
+    void setMethod(int method = -1);
 
 
  protected:
@@ -124,7 +125,9 @@ class eGurobi : public TrajectoryOptimizer {
     /** Goal state constraint equation names */
     std::vector<std::string> _xf_upper_constraint_names;
     std::vector<std::string> _xf_lower_constraint_names;
-
+    /** Callback to retrieve a Gurobi variable */
+    std::shared_ptr<std::function<GRBVar(const std::string&)>> getVar_;
+    int method_ = -1;  /**< Gurobi solve method*/
 
     // Protected functions
     /**

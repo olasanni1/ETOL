@@ -768,7 +768,8 @@ void TrajectoryOptimizer::printConfigs() {
         i++;
     }
     cout << endl;
-    cout << "\t\tExclusion Zone Corners..." <<endl;
+    if (!this->getObstacles()->empty())
+        cout << "\t\tExclusion Zone Corners..." <<endl;
     for (auto obs : *this->getObstacles()) {
         for (auto bd : obs) {
             cout << "Bottom\t\t";
@@ -785,6 +786,9 @@ void TrajectoryOptimizer::printConfigs() {
         }
         cout << endl;
     }
+    cout << endl;
+    if (!this->getObstacles()->empty())
+        cout << "\t\tMoving Exclusion Zones..." <<endl;
     for (auto track : *this->getTracks()) {
         cout << "\t\tradius\t#points"<< endl;
         cout << "TrackInfo\t" << track.radius <<

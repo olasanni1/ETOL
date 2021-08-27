@@ -101,6 +101,7 @@ void eGurobi::setup() {
             this->addDyn();
             this->addConstr();
             this->addObj();
+            this->model_->set(GRB_IntParam_Method, method_);
             this->model_->set(GRB_IntParam_OutputFlag, 0);
             this->model_->set(GRB_IntParam_UpdateMode, 0);
         } else {
@@ -288,15 +289,20 @@ void eGurobi::createVars() {
             double t = static_cast<double>(k) * this->getDt();
             for (auto param : this->_parameters) {
                 if ((t >= param.second.tStart) && (t <= param.second.tStop)) {
-                    GRBVar var;
-                    var = (this->model_->addVar(
+                    this->model_->addVar(
                             param.second.lbnd, param.second.ubnd, 0.0,
                             getGRBType(param.second.varType),
-                            getParamName(param.first, k)));
-                    this->_params.push_back(var);
-                    this->_pnames.push_back(getParamName(param.first, k));
+                            getParamName(param.first, k));
                 }
             }
+            std::function<GRBVar(const std::string&)> getVar_cb =
+                    [this](const std::string &varname) -> GRBVar {
+                return this->model_->getVarByName(varname);;
+            };
+            getVar_ = std::make_shared<std::function<GRBVar(
+                    const std::string &)>>(getVar_cb);
+            this->_params.push_back(getVar_.get());
+            this->_pnames.push_back("getVar");
         }
         this->model_->update();
     } catch (GRBException& ex) {
@@ -651,5 +657,8 @@ void eGurobi::setConstraints(std::vector<f_t*> constraints) {
     TrajectoryOptimizer::setConstraints(constraints);
 }
 
+void eGurobi::setMethod(int method) {
+    method_ = method;
+}
 
 }  /* namespace ETOL */
