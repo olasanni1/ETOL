@@ -79,15 +79,19 @@ int main(int argc, char** argv) {
     t->solve();
 
     // Results
-    std::cout << "\n!!!!!!!!!!!!!!!!!Results!!!!!!!!!!!!!!!!!" << std::endl;
-    std::cout << "Minimization Score:\t" << t->getScore() << std::endl;
-    std::cout << "Plotting..." << std::endl;
-    ETOL::TrajectoryOptimizer::plotXY_wExclZones(t->getXtraj(),
-            t->getObstacles());
+    printf("\n!!!!!!!!!!!!!!!!!Results!!!!!!!!!!!!!!!!!\n");
+    printf("Minimization Score:\t%f\n", t->getScore());
+    printf("State variables saved in %s\n", ETOL::TrajectoryOptimizer::save(
+            t->getXtraj(), "state_scip1.csv").c_str());
+    printf("Control variables saved in %s\n", ETOL::TrajectoryOptimizer::save(
+            t->getUtraj(), "control_scip1.csv").c_str());
+//    std::cout << "Plotting..." << std::endl;
+//    ETOL::TrajectoryOptimizer::plotXY_wExclZones(t->getXtraj(),
+//            t->getObstacles());
 
     // Release resources e.g. memory
     t->close();
-
+    printf("\n!!!!!!!!!!!!!!Graceful Exit!!!!!!!!!!!!!!\n");
     return EXIT_SUCCESS;
 }
 
