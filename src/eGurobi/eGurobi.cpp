@@ -124,6 +124,7 @@ void eGurobi::solve() {
         this->model_->optimize();
         if (this->model_->get(GRB_IntAttr_SolCount) > 0) {
             setScore(model_->get(::GRB_DoubleAttr_ObjVal));
+            this->model_->update();
             this->getTraj();
         }
     } catch(GRBException& e) {
@@ -444,31 +445,59 @@ void eGurobi::getTraj() {
         std::iota(x_idx.begin(), x_idx.end(), 0);
         std::iota(u_idx.begin(), u_idx.end(), 0);
 
+        auto x_cb = [this](const auto &i, const auto &j) -> double {
+            try {
+                GRBVar var = this->model_->getVarByName(getStateName(i, j));
+                double val = var.get(GRB_DoubleAttr_X);
+                return val;
+            } catch (GRBException& ex) {
+                std::cerr << "Gurobi Error: " << ex.getErrorCode()
+                                << std::endl;
+                std::cerr << ex.getMessage() << std::endl;
+                std::cerr << "Varname: " << getStateName(i, j) << std::endl;
+            }
+            return std::numeric_limits<double>::infinity();
+        };
+        auto u_cb = [this](const auto &i, const auto &j) -> double {
+            try {
+                GRBVar var = this->model_->getVarByName(getControlName(i, j));
+                double val = var.get(GRB_DoubleAttr_X);
+                return val;
+            } catch (GRBException& ex) {
+                std::cerr << "Gurobi Error: " << ex.getErrorCode()
+                                << std::endl;
+                std::cerr << ex.getMessage() << std::endl;
+                std::cerr << "Varname: " << getControlName(i, j)<< std::endl;
+            }
+            return std::numeric_limits<double>::infinity();
+        };
+
         traj_t* xtraj = this->getXtraj();
         xtraj->resize(getNSteps()+1);
-        std::transform(EXEC_POLICY_UNSEQ, t_idx.begin(), t_idx.end(),
-                xtraj->begin(), [this, &x_idx](const auto & i) -> traj_elem_t {
+
+        // Occasional error if outer loop is parallel
+        std::transform(t_idx.begin(), t_idx.end(),
+                xtraj->begin(), [this, &x_idx, &x_cb](const auto & i) -> traj_elem_t {
             double t = static_cast<double>(i) * this->getDt();
             state_t x(this->getNStates());
             std::transform(EXEC_POLICY_UNSEQ, x_idx.begin(), x_idx.end(),
-                    x.begin(), [this, &i](const auto &j) -> double {
-                GRBVar var = this->model_->getVarByName(getStateName(i, j));
-                return(var.get(GRB_DoubleAttr_X));
+                    x.begin(), [&i, &x_cb](const auto &j) -> double {
+                return x_cb(i, j);
             });
             return (traj_elem_t(t, x));
         });
 
         traj_t* utraj = this->getUtraj();
         utraj->resize(getNSteps()+1);
-        std::transform(EXEC_POLICY_UNSEQ, t_idx.begin(), t_idx.end(),
-                utraj->begin(), [this, &u_idx](const auto & i) -> traj_elem_t {
-            double t = static_cast<double>(i) * this->getDt();
 
+        // Occasional error if outer loop is parallel
+        std::transform(t_idx.begin(), t_idx.end(),
+                utraj->begin(), [this, &u_idx, &u_cb](const auto & i) -> traj_elem_t {
+            double t = static_cast<double>(i) * this->getDt();
             state_t u(getNControls());
             std::transform(EXEC_POLICY_UNSEQ, u_idx.begin(), u_idx.end(),
-                    u.begin(), [this, &i](const auto &j) -> double {
-                GRBVar var = this->model_->getVarByName(getControlName(i, j));
-                return(var.get(GRB_DoubleAttr_X));
+                    u.begin(), [&i, &u_cb](const auto &j) -> double {
+                return u_cb(i, j);
             });
             return (traj_elem_t(t, u));
         });
