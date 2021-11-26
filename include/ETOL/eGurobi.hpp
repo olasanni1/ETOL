@@ -89,7 +89,6 @@ class eGurobi : public TrajectoryOptimizer {
     static std::string getParamName(const std::string& name,
             const size_t& tIdx);
 
-
     void setDt(double dt);
     void setNSteps(const size_t nSteps);
     void setXvartype(const state_var_t &xvartype);
@@ -107,7 +106,7 @@ class eGurobi : public TrajectoryOptimizer {
     void setGradient(std::vector<f_t*> gradient);
     void setConstraints(std::vector<f_t*> constraints);
     void setMethod(int method = -1);
-
+    double getVarValue(const std::string &var_name) const;
 
  protected:
     // Protected data

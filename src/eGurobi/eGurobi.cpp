@@ -298,7 +298,7 @@ void eGurobi::createVars() {
             }
             std::function<GRBVar(const std::string&)> getVar_cb =
                     [this](const std::string &varname) -> GRBVar {
-                return this->model_->getVarByName(varname);;
+                return this->model_->getVarByName(varname);
             };
             getVar_ = std::make_shared<std::function<GRBVar(
                     const std::string &)>>(getVar_cb);
@@ -476,8 +476,8 @@ void eGurobi::getTraj() {
         xtraj->resize(getNSteps()+1);
 
         // Occasional error if outer loop is parallel
-        std::transform(t_idx.begin(), t_idx.end(),
-                xtraj->begin(), [this, &x_idx, &x_cb](const auto & i) -> traj_elem_t {
+        std::transform(t_idx.begin(), t_idx.end(), xtraj->begin(),
+                [this, &x_idx, &x_cb](const auto & i) -> traj_elem_t {
             double t = static_cast<double>(i) * this->getDt();
             state_t x(this->getNStates());
             std::transform(EXEC_POLICY_UNSEQ, x_idx.begin(), x_idx.end(),
@@ -491,8 +491,8 @@ void eGurobi::getTraj() {
         utraj->resize(getNSteps()+1);
 
         // Occasional error if outer loop is parallel
-        std::transform(t_idx.begin(), t_idx.end(),
-                utraj->begin(), [this, &u_idx, &u_cb](const auto & i) -> traj_elem_t {
+        std::transform(t_idx.begin(), t_idx.end(), utraj->begin(),
+                [this, &u_idx, &u_cb](const auto & i) -> traj_elem_t {
             double t = static_cast<double>(i) * this->getDt();
             state_t u(getNControls());
             std::transform(EXEC_POLICY_UNSEQ, u_idx.begin(), u_idx.end(),
@@ -690,4 +690,17 @@ void eGurobi::setMethod(int method) {
     method_ = method;
 }
 
-}  /* namespace ETOL */
+double eGurobi::getVarValue(const std::string &var_name) const {
+    double val = GRB_INFINITY;
+    try {
+        val = this->model_->getVarByName(var_name).get(GRB_DoubleAttr_X);
+    } catch (GRBException &e) {
+        std::cerr << "eGurobi: Error retrieving the value for variable " <<
+                var_name << std::endl;
+        std::cerr << "eGurobi: Error " << e.getErrorCode() << " : " <<
+                e.getMessage() << std::endl;
+    }
+    return val;
+}
+
+}  // namespace ETOL
