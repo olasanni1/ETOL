@@ -122,6 +122,8 @@ void eGurobi::setup() {
 void eGurobi::solve() {
     try {
         this->model_->optimize();
+        *this->getXtraj() = {};
+        *this->getUtraj() = {};
         if (this->model_->get(GRB_IntAttr_SolCount) > 0) {
             setScore(model_->get(::GRB_DoubleAttr_ObjVal));
             this->model_->update();
