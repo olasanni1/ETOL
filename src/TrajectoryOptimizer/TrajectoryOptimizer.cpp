@@ -259,7 +259,7 @@ void TrajectoryOptimizer::plot(traj_t *traj, const std::string title,
 
         gpcmd = "plot ";
         for (size_t i(0); i < n ; i++) {
-            gpcmd = gpcmd + "'-' with linespoint title 'plot" +
+            gpcmd = gpcmd + "'-' with linespoint notitle 'plot" +
                     std::to_string(i) + "'";
             if (i < n -1)
                 gpcmd = gpcmd + ",";
@@ -572,7 +572,8 @@ std::string TrajectoryOptimizer::animate2D(traj_t* traj, const int framerate,
             }
 
             gpcmd = "";
-            for (size_t i(0); i < (obs.size() + tracks->size()); i++)
+            for (size_t i(0); i < obs.size() + (tracks ? tracks->size() : 0);
+                    i++)
                 gpcmd+= ",'-' with lines notitle";
 
             gpcmd = gpcmd + "\n";

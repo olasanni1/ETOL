@@ -340,7 +340,7 @@ class TrajectoryOptimizer {
      * @brief Set an initial state
      * @param x0 the initial state vector
      */
-    void setX0(const state_t &x0);
+    virtual void setX0(const state_t &x0);
 
     /**
      * @brief Get the goal state
@@ -352,7 +352,7 @@ class TrajectoryOptimizer {
      * @brief Set the goal state
      * @param xf a final (or goal) state vector
      */
-    void setXf(const state_t &xf);
+    virtual void setXf(const state_t &xf);
 
     /**
      * @brief Get the number of control variables
@@ -376,7 +376,7 @@ class TrajectoryOptimizer {
      * @brief Set the states' lower bound
      * @param xlower lower bounds for the states
      */
-    void setXlower(const state_t &xlower);
+    virtual void setXlower(const state_t &xlower);
 
     /**
      * @brief Get the states' upper bound
@@ -388,7 +388,7 @@ class TrajectoryOptimizer {
      * @brief Set the states' upper bound
      * @param xupper upper bounds for the states
      */
-    void setXupper(const state_t &xupper);
+    virtual void setXupper(const state_t &xupper);
 
     /**
      * @brief Get the states' variable type
@@ -400,7 +400,7 @@ class TrajectoryOptimizer {
      * @brief Set the states' variable type
      * @param xvartype state variables' type
      */
-    void setXvartype(const state_var_t &xvartype);
+    virtual void setXvartype(const state_var_t &xvartype);
 
     /**
      * @brief Get the time step size
@@ -412,7 +412,7 @@ class TrajectoryOptimizer {
      * @brief Set the time step size
      * @param dt a time step size
      */
-    void setDt(double dt);
+    virtual void setDt(double dt);
 
     /**
      * @brief Get the number of time steps
@@ -424,7 +424,7 @@ class TrajectoryOptimizer {
      * @brief Set the number of steps
      * @param nSteps number of time steps
      */
-    void setNSteps(const size_t nSteps);
+    virtual void setNSteps(const size_t nSteps);
 
     /**
      * @brief Get the states' error tolerance
@@ -436,7 +436,7 @@ class TrajectoryOptimizer {
      * @brief Set the states' error tolerance
      * @param xtol error tolerance for the states
      */
-    void setXtol(const state_t &xtol);
+    virtual void setXtol(const state_t &xtol);
 
     /**
      * @brief Get the controls' lower bound
@@ -448,7 +448,7 @@ class TrajectoryOptimizer {
      * @brief Set the control's lower bound
      * @param ulower lower bound on the controls
      */
-    void setUlower(const state_t &ulower);
+    virtual void setUlower(const state_t &ulower);
 
     /**
      * @brief Get the controls' upper bound
@@ -460,7 +460,7 @@ class TrajectoryOptimizer {
      * @brief Set the controls' upper bound
      * @param uupper upper bound on the controls
      */
-    void setUupper(const state_t &uupper);
+    virtual void setUupper(const state_t &uupper);
 
     /**
      * @brief Get the control variables' type
@@ -472,7 +472,7 @@ class TrajectoryOptimizer {
      * @brief Set the control variables' type
      * @param uvartype control variables' type
      */
-    void setUvartype(const state_var_t &uvartype);
+    virtual void setUvartype(const state_var_t &uvartype);
 
     /**
      * @brief Get the controls' reverse time horizon
@@ -494,7 +494,7 @@ class TrajectoryOptimizer {
      * index is 10, and \a nu4dyn is 2, then time index 8, 9, and 10 are used
      * when computing the state at time index 10.
      */
-    void setUrhorizon(const size_t nu4dyn);
+    virtual void setUrhorizon(const size_t nu4dyn);
 
     /**
      * @brief Get the states' reverse time horizon
@@ -516,7 +516,7 @@ class TrajectoryOptimizer {
      * index is 10, and \a nx4dyn is 2, then state at time index 8, 9, and 10
      * are used when computing the state at time index 10.
      */
-    void setXrhorizon(const size_t nx4dyn);
+    virtual void setXrhorizon(const size_t nx4dyn);
 
     /**
      * @brief Get the maximium possible reverse time horizon
@@ -528,43 +528,43 @@ class TrajectoryOptimizer {
      * @brief Get the number of control variables
      * @param nControls number of control variables
      */
-    void setNControls(const size_t nControls);
+    virtual void setNControls(const size_t nControls);
 
     /**
      * @brief Get the number of state variables
      * @param nStates number of state variables
      */
-    void setNStates(const size_t nStates);
+    virtual void setNStates(const size_t nStates);
 
     /**
      * @brief Set the equality constraints
      * @param constraints a vector equality constraint functions
      */
-    void setEqConstraints(std::vector<f_t*> constraints);
+    virtual void setEqConstraints(std::vector<f_t*> constraints);
 
     /**
      * @brief Set the inequality constraints
      * @param constraints a vector of inequality constraint functions
      */
-    void setLessEqConstraints(std::vector<f_t*> constraints);
+    virtual void setLessEqConstraints(std::vector<f_t*> constraints);
 
     /**
      * @brief Set sense-agnostic constraint functions
      * @param constraints a vector of constraint functions
      */
-    void setConstraints(std::vector<f_t*> constraints);
+    virtual void setConstraints(std::vector<f_t*> constraints);
 
     /**
      * @brief Set the states' time derivative function
      * @param gradient a vector of time derivative functions for the states
      */
-    void setGradient(std::vector<f_t*> gradient);
+    virtual void setGradient(std::vector<f_t*> gradient);
 
     /**
      * @brief Set the objective function
      * @param objective an objective function
      */
-    void setObjective(f_t* objective);
+    virtual void setObjective(f_t* objective);
 
     /**
      * @brief Get the pointer to the computed control trajectory
@@ -640,7 +640,7 @@ class TrajectoryOptimizer {
      *
      * True indicates maximization. False indicates minimization
      */
-    void setMaximize(const bool maximize);
+    virtual void setMaximize(const bool maximize);
 
     /**
      * @brief Get the number of exclusion zones

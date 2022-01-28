@@ -34,22 +34,22 @@ class eGurobi : public TrajectoryOptimizer {
     /**
      * @brief Constructs an optimization problem from settings
      */
-    void setup();
+    void setup() override;
 
     /**
      * @brief Solves the trajectory optimization problem
      */
-    void solve();
+    void solve() override;
 
     /**
      * @brief Generates debug information
      */
-    void debug();
+    void debug() override;
 
     /**
      * @brief Closes all dynamically allocated resources
      */
-    void close();
+    void close() override;
 
     /**
      * @brief Returns the cached number of constraints
@@ -89,22 +89,22 @@ class eGurobi : public TrajectoryOptimizer {
     static std::string getParamName(const std::string& name,
             const size_t& tIdx);
 
-    void setDt(double dt);
-    void setNSteps(const size_t nSteps);
-    void setXvartype(const state_var_t &xvartype);
-    void setX0(const state_t& x0);
-    void setXf(const state_t& x0);
-    void setXtol(const state_t &xtol);
-    void setXupper(const state_t &xupper);
-    void setXlower(const state_t &xlower);
-    void setXrhorizon(const size_t nx4dyn);
-    void setUvartype(const state_var_t &uvartype);
-    void setUupper(const state_t &uupper);
-    void setUlower(const state_t &ulower);
-    void setUrhorizon(const size_t nu4dyn);
-    void setObjective(f_t* objective);
-    void setGradient(std::vector<f_t*> gradient);
-    void setConstraints(std::vector<f_t*> constraints);
+    void setDt(double dt) override;
+    void setNSteps(const size_t nSteps) override;
+    void setXvartype(const state_var_t &xvartype) override;
+    void setX0(const state_t& x0) override;
+    void setXf(const state_t& x0) override;
+    void setXtol(const state_t &xtol) override;
+    void setXupper(const state_t &xupper) override;
+    void setXlower(const state_t &xlower) override;
+    void setXrhorizon(const size_t nx4dyn) override;
+    void setUvartype(const state_var_t &uvartype) override;
+    void setUupper(const state_t &uupper) override;
+    void setUlower(const state_t &ulower) override;
+    void setUrhorizon(const size_t nu4dyn) override;
+    void setObjective(f_t* objective) override;
+    void setGradient(std::vector<f_t*> gradient) override;
+    void setConstraints(std::vector<f_t*> constraints) override;
     void setMethod(int method = -1);
     double getVarValue(const std::string &var_name) const;
 
