@@ -107,6 +107,7 @@ class eGurobi : public TrajectoryOptimizer {
     void setConstraints(std::vector<f_t*> constraints) override;
     void setMethod(int method = -1);
     double getVarValue(const std::string &var_name) const;
+    const std::shared_ptr<GRBModel>& getModel() const;
 
  protected:
     // Protected data

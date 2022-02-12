@@ -705,4 +705,8 @@ double eGurobi::getVarValue(const std::string &var_name) const {
     return val;
 }
 
+const std::shared_ptr<GRBModel>& eGurobi::getModel() const {
+    return model_;
+}
+
 }  // namespace ETOL
