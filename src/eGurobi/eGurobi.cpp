@@ -393,6 +393,9 @@ void eGurobi::addConstr() {
 }
 
 void eGurobi::addDyn() {
+    if (_gradient.empty())
+        return;
+
     try {
         for (size_t i = this->getRhorizon(); i <= this->getNSteps(); i++) {
             for (size_t j(0); j < this->getNStates(); j++)
@@ -407,6 +410,8 @@ void eGurobi::addDyn() {
 }
 
 void eGurobi::addObj() {
+    if (!_objective)
+        return;
     try {
         std::vector<size_t> t_idx(getNSteps() + 1);
 
