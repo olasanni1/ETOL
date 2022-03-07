@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.5)
 
 project(eGurobi)
 
-if (DISBALE_GUROBI)
+if (DISABLE_GUROBI)
   return()
 endif()
 

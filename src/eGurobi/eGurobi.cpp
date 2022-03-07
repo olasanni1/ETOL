@@ -292,10 +292,12 @@ void eGurobi::createVars() {
             double t = static_cast<double>(k) * this->getDt();
             for (auto param : this->_parameters) {
                 if ((t >= param.second.tStart) && (t <= param.second.tStop)) {
-                    this->model_->addVar(
+                    auto var = this->model_->addVar(
                             param.second.lbnd, param.second.ubnd, 0.0,
                             getGRBType(param.second.varType),
                             getParamName(param.first, k));
+                    _params.push_back(var);
+                    _pnames.push_back(getParamName(param.first, k));
                 }
             }
             std::function<GRBVar(const std::string&)> getVar_cb =

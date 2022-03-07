@@ -8,7 +8,7 @@ if(TARGET eGurobi)
 
   foreach(example ${GUROBI_EXAMPLES})
     add_executable(${example} ${example}.cpp)
-      target_link_libraries(${example} PUBLIC eGurobi)
+    target_link_libraries(${example} PUBLIC eGurobi)
   endforeach()
 else()
   message("Skipping eGurobi_Examples...")
