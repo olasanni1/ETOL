@@ -18,6 +18,7 @@
 #include <vector>
 #include <string>
 #include <atomic>
+#include <memory>
 #include <ETOL/eSCIP_Types.hpp>
 #include <ETOL/TrajectoryOptimizer.hpp>
 
@@ -178,6 +179,7 @@ class eSCIP : public TrajectoryOptimizer {
     vector_t getStates(const size_t &tIdx);
     vector_t getControls(const size_t &tIdx);
     SCIP_VAR* getVarByName(const std::string& name);
+    std::shared_ptr<std::function<SCIP_Var*(const std::string&)>> getVar_;
 
  private:
     /**

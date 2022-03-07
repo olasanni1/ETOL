@@ -79,13 +79,18 @@ void eSCIP::close() {
     if (configured_) {
         releaseVars(x_, getNStates() * (getNSteps() + 1));
         releaseVars(u_, getNControls() * (getNSteps() + 1));
-        for (auto &p : params_) {
-            SCIP_VAR* var = std::any_cast<SCIP_VAR*>(p);
-            SCIP_CALL_ABORT(SCIPreleaseVar(scip_, &var));
+        for (size_t i = 0; i < params_.size(); i++) {
+            if (pnames_.at(i) != std::string("getVar")) {
+                SCIP_VAR* var = std::any_cast<SCIP_VAR*>(params_[i]);
+                SCIP_CALL_ABORT(SCIPreleaseVar(scip_, &var));
+            }
         }
+        params_.clear();
+        pnames_.clear();
         SCIPfreeMemoryArray(scip_, &x_);
         SCIPfreeMemoryArray(scip_, &u_);
         SCIPfreeMemoryArray(scip_, &p_);
+        getVar_.reset();
         configured_ = false;
         reset_ = true;
     }
@@ -170,8 +175,11 @@ scip_expr_t eSCIP::dynConstr(const size_t &tIdx, const size_t &sIdx) {
 fout_scip_t eSCIP::pathConstr(const size_t &tIdx, const size_t &kIdx) {
     std::any p_val;
 
-    vector_t x = getStates(tIdx);
-    vector_t u = getControls(tIdx);
+    vector_t xhist = getStates(tIdx);
+    vector_t uhist = getControls(tIdx);
+
+    vector_t x(xhist.begin(), xhist.begin() + getNStates());
+    vector_t u(uhist.begin(), uhist.begin() + getNControls());
 
     f_t* p = this->_constraints.at(kIdx);
     p_val = (*p)(x, u, params_, pnames_, tIdx, getDt());
@@ -237,6 +245,16 @@ void eSCIP::createVars() {
                 pnames_.push_back(std::string(getParamName(param.first, i)));
             }
         }
+
+        if (!getVar_) {
+            getVar_ = std::make_shared<std::function<SCIP_Var*(
+                    const std::string&)>>([this](const std::string &varname)
+                            -> SCIP_VAR* {
+                return this->getVarByName(varname);
+            });
+        }
+        params_.push_back(getVar_.get());
+        pnames_.push_back(std::string("getVar"));
     }
 }
 

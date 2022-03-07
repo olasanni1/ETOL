@@ -7,12 +7,14 @@ if(DISABLE_SCIP)
 endif()
 
 find_package(SCIP)
+find_package(TBB)
 
 if(SCIP_FOUND)
   add_library(${PROJECT_NAME} STATIC ${PROJECT_NAME}.cpp)
 
   target_link_libraries(${PROJECT_NAME}
-    PUBLIC TrajectoryOptimizer ${SCIP_LIBRARIES})
+    PUBLIC TrajectoryOptimizer ${SCIP_LIBRARIES}
+           $<IF:$<BOOL:${TBB_FOUND}>,TBB::tbb,tbb>)
 
   target_include_directories(${PROJECT_NAME}
     PUBLIC ${SCIP_INCLUDE_DIRS} ${LIBM})
