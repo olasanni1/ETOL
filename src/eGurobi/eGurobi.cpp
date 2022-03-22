@@ -345,6 +345,23 @@ void eGurobi::addX0() {
 
 void eGurobi::addXf() {
     GRBLinExpr expr = GRBLinExpr();
+
+    for (size_t i = 0; i < this->getRhorizon(); i++) {
+        for (size_t j(0); j < this->getNControls(); j++) {
+            double coeffs[] = {1., -1.};
+            GRBVar vars[] = {
+                    this->model_->getVarByName(getControlName(
+                            getNSteps() - i, j)),
+                    this->model_->getVarByName(getControlName(
+                            getNSteps() - this->getRhorizon(), j))
+            };
+            expr.addTerms(coeffs, vars, 2);
+            this->model_->addConstr(expr, GRB_EQUAL, 0.,
+                    "c" + std::to_string((size_t)(this->_nConstr++)));
+            expr.clear();
+        }
+    }
+
     double coeff = 1.0;
     size_t i = this->getNSteps();
     std::string n(std::to_string(this->getNSteps()) + "_");
