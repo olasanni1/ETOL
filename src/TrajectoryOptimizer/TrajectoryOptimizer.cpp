@@ -188,7 +188,7 @@ void TrajectoryOptimizer::calcSlopes(const region_t& region,
             double dely = (*std::next(it, 1)).at(1) - (*it).at(1);
             double delx = (*std::next(it, 1)).at(0) - (*it).at(0);
             if (delx == 0.)
-                m = DBL_MAX;
+                m = (dely > 0.) ? DBL_MAX : -DBL_MAX;
             else
                 m = dely / delx;
 
@@ -204,7 +204,7 @@ void TrajectoryOptimizer::calcSlopes(const region_t& region,
             double dely = (*std::next(it, 1)).at(1) - (*it).at(1);
             double delx = (*std::next(it, 1)).at(0) - (*it).at(0);
             if (delx == 0.)
-                m = DBL_MAX;
+                m = (dely > 0.) ? DBL_MAX : -DBL_MAX;
             else
                 m = dely / delx;
 
