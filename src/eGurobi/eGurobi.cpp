@@ -570,6 +570,12 @@ void eGurobi::changeXf() {
 
 // Overriding Setters
 
+template <typename T>
+bool is_different(const T &a, const T &b) {
+    return a.size() != b.size() ? true :
+            !std::equal(a.cbegin(), a.cend(), b.cbegin());
+}
+
 void eGurobi::setDt(double dt) {
     if (this->getDt() != dt) {
         reset_ = true;
@@ -585,75 +591,47 @@ void eGurobi::setNSteps(const size_t nSteps) {
 }
 
 void eGurobi::setXvartype(const state_var_t &xvartype) {
-    if (!std::equal(this->getXvartype().cbegin(),
-            this->getXvartype().cend(), xvartype.cbegin())) {
+    if (is_different(this->getXvartype(), xvartype)) {
         reset_ = true;
         TrajectoryOptimizer::setXvartype(xvartype);
     }
 }
 
 void eGurobi::setX0(const state_t& x0) {
-    // Skip comparison and reset if array size is different
-    if (this->getX0().size() == x0.size()) {
-        if (!std::equal(this->getX0().cbegin(), this->getX0().cend(),
-                x0.cbegin())) {
+    if (is_different(this->getX0(), x0)) {
             // Only change the xf values in the Gurobi model
-            x0_changed_ = true;
-            TrajectoryOptimizer::setX0(x0);
-        }
-        return;
+        x0_changed_ = true;
+        TrajectoryOptimizer::setX0(x0);
     }
-    // Vector size change requires a reset
-    TrajectoryOptimizer::setX0(x0);
-    reset_ = true;
-    return;
 }
 
 void eGurobi::setXf(const state_t& xf) {
-    // Skip comparison and reset if array size is different
-    if (this->getXf().size() == xf.size()) {
-        if (!std::equal(this->getXf().cbegin(), this->getXf().cend(),
-                xf.cbegin())) {
-            // Only change the xf values in the Gurobi model
-            xf_changed_ = true;
-            TrajectoryOptimizer::setXf(xf);
-        }
-        return;
+    if (is_different(this->getXf(), xf)) {
+        // Only change the xf values in the Gurobi model
+        xf_changed_ = true;
+        TrajectoryOptimizer::setXf(xf);
     }
-    // Vector size change requires a reset
-    TrajectoryOptimizer::setXf(xf);
-    reset_ = true;
     return;
 }
 
 void eGurobi::setXtol(const state_t &xtol) {
-    // Skip comparison and reset if array size is different
-    if (this->getXtol().size() == xtol.size()) {
-        if (!std::equal(this->getXtol().cbegin(), this->getXtol().cend(),
-                xtol.cbegin())) {
-            // Only change the xf values in the Gurobi model
-            xf_changed_ = true;
-            TrajectoryOptimizer::setXtol(xtol);
-        }
-        return;
+    if (is_different(this->getXtol(), xtol)){
+        // Only change the xf values in the Gurobi model
+        xf_changed_ = true;
+        TrajectoryOptimizer::setXtol(xtol);
     }
-    // Vector size change requires a reset
-    TrajectoryOptimizer::setXtol(xtol);
-    reset_ = true;
     return;
 }
 
 void eGurobi::setXupper(const state_t &xupper) {
-    if (!std::equal(this->getXupper().cbegin(),
-            this->getXupper().cend(), xupper.cbegin())) {
+    if (is_different(this->getXupper(), xupper)) {
         reset_ = true;
         TrajectoryOptimizer::setXupper(xupper);
     }
 }
 
 void eGurobi::setXlower(const state_t &xlower) {
-    if (!std::equal(this->getXlower().cbegin(),
-            this->getXlower().cend(), xlower.cbegin())) {
+    if (is_different(this->getXlower(), xlower)) {
         reset_ = true;
         TrajectoryOptimizer::setXlower(xlower);
     }
@@ -667,24 +645,21 @@ void eGurobi::setXrhorizon(const size_t nx4dyn) {
 }
 
 void eGurobi::setUvartype(const state_var_t &uvartype) {
-    if (!std::equal(this->getUvartype().cbegin(),
-            this->getUvartype().cend(), uvartype.cbegin())) {
+    if (is_different(this->getUvartype(), uvartype)) {
         reset_ = true;
         TrajectoryOptimizer::setUvartype(uvartype);
     }
 }
 
 void eGurobi::setUupper(const state_t &uupper) {
-    if (!std::equal(this->getUupper().cbegin(),
-            this->getUupper().cend(), uupper.cbegin())) {
+    if (is_different(this->getUupper(), uupper)) {
         reset_ = true;
         TrajectoryOptimizer::setUupper(uupper);
     }
 }
 
 void eGurobi::setUlower(const state_t &ulower) {
-    if (!std::equal(this->getUlower().cbegin(),
-            this->getUlower().cend(), ulower.cbegin())) {
+    if (is_different(this->getUlower(), ulower)) {
         reset_ = true;
         TrajectoryOptimizer::setUlower(ulower);
     }
