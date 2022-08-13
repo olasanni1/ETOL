@@ -10,19 +10,19 @@ set(GUROBI_HINTS ${GUROBI_ROOT_DIR})
 		  
 if(APPLE)
   set(GUROBI_API libgurobi_stdc++.a)
-  set(GUROBI_NAMES libgurobi91.dylib libgurobi90.dylib libgurobi80.dylib)
+  set(GUROBI_NAMES libgurobi95.dylib libgurobi91.dylib libgurobi90.dylib libgurobi80.dylib)
   set(GUROBI_HINTS "${GUROBI_HINTS}"
 	/opt/gurobi912/linux64 /opt/gurobi911/linux64 /opt/gurobi901/linux64
         /opt/gurobi811/linux64 /opt/gurobi801/linux64)
 elseif(UNIX)
   set(GUROBI_API libgurobi_g++5.2.a)
-  set(GUROBI_NAMES libgurobi91.so libgurobi90.so libgurobi81.so libgurobi80.so)
+  set(GUROBI_NAMES libgurobi95.so libgurobi91.so libgurobi90.so libgurobi81.so libgurobi80.so)
   set(GUROBI_HINTS "${GUROBI_HINTS}"
 	/opt/gurobi912/linux64 /opt/gurobi911/linux64 /opt/gurobi901/linux64
         /opt/gurobi811/linux64 /opt/gurobi801/linux64)
 elseif(WIN32)
   set(GUROBI_API libgurobi_c++.a)
-  set(GUROBI_NAMES gurobi91.lib gurobi90.lib gurobi81.lib gurobi80.lib)
+  set(GUROBI_NAMES gurobi95.lib gurobi91.lib gurobi90.lib gurobi81.lib gurobi80.lib)
   set(GUROBI_HINTS "${GUROBI_HINTS}"
 	C:/gurobi912/win64 C:/gurobi911/win64 C:/gurob901/win64
         C:/gurobi811/win64 C:/gurobi801/win64)
