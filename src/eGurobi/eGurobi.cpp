@@ -501,13 +501,13 @@ void eGurobi::getTraj() {
         traj_t* xtraj = this->getXtraj();
         xtraj->resize(getNSteps()+1);
 
-        // Occasional error if outer loop is parallel
+        // Occasional error if loops are parallel
         std::transform(t_idx.begin(), t_idx.end(), xtraj->begin(),
                 [this, &x_idx, &x_cb](const auto & i) -> traj_elem_t {
             double t = static_cast<double>(i) * this->getDt();
             state_t x(this->getNStates());
-            std::transform(EXEC_POLICY_UNSEQ, x_idx.begin(), x_idx.end(),
-                    x.begin(), [&i, &x_cb](const auto &j) -> double {
+            std::transform(x_idx.begin(), x_idx.end(), x.begin(),
+                    [&i, &x_cb](const auto &j) -> double {
                 return x_cb(i, j);
             });
             return (traj_elem_t(t, x));
@@ -516,13 +516,13 @@ void eGurobi::getTraj() {
         traj_t* utraj = this->getUtraj();
         utraj->resize(getNSteps()+1);
 
-        // Occasional error if outer loop is parallel
+        // Occasional error if loops are parallel
         std::transform(t_idx.begin(), t_idx.end(), utraj->begin(),
                 [this, &u_idx, &u_cb](const auto & i) -> traj_elem_t {
             double t = static_cast<double>(i) * this->getDt();
             state_t u(getNControls());
-            std::transform(EXEC_POLICY_UNSEQ, u_idx.begin(), u_idx.end(),
-                    u.begin(), [&i, &u_cb](const auto &j) -> double {
+            std::transform(u_idx.begin(), u_idx.end(), u.begin(),
+                    [&i, &u_cb](const auto &j) -> double {
                 return u_cb(i, j);
             });
             return (traj_elem_t(t, u));
