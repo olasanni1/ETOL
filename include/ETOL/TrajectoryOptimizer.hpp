@@ -261,7 +261,7 @@ class TrajectoryOptimizer {
 	 *
 	 * @tparam T an integer datatype
 	 * @param traj an n-dimensional trajectory
-	 * @param x_idxs
+	 * @param idxs indices of trajectories to extract
 	 * @return a m-dimensionional trajectory
 	 */
 	template<typename T>
