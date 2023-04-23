@@ -5,7 +5,7 @@ Creating a VGP
 
 In this tutorial, a two-dimensional single integrator vehicle guidance problem (VGP) is considered.
 
-.. image:: ../images/vgp.png
+.. image:: ../images/vgp.PNG
 
 The VGP is expressed as an optimal control problem,
 
