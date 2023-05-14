@@ -51,6 +51,8 @@ void eSCIP::setup() {
         this->addDyn();
         this->addConstr();
         this->addObj();
+        SCIP_CALL_ABORT(SCIPsetIntParam(scip_, "display/verblevel",
+                SCIP_VerbLevel::SCIP_VERBLEVEL_MINIMAL));
     } else {
         if (x0_changed_) {
             this->configX0();
@@ -73,6 +75,8 @@ void eSCIP::solve() {
 
 void eSCIP::debug() {
     SCIP_CALL_ABORT(SCIPwriteOrigProblem(scip_, "debug.lp", "lp", false));
+    SCIP_CALL_ABORT(SCIPsetIntParam(scip_, "display/verblevel",
+                    SCIP_VerbLevel::SCIP_VERBLEVEL_FULL));
 }
 
 void eSCIP::close() {
@@ -96,6 +100,9 @@ void eSCIP::close() {
     }
 }
 
+SCIP* eSCIP::getModel() const {
+    return this->scip_;
+}
 
 std::string eSCIP::getStateName(const size_t& tIdx, const size_t& sIdx) {
     return("x_" + std::to_string(tIdx) + "_" + std::to_string(sIdx));

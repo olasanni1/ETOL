@@ -110,6 +110,8 @@ class eSCIP : public TrajectoryOptimizer {
     static std::string getParamName(std::string name, const size_t& Idx1,
             const size_t& Idx2, const size_t& Idx3);
 
+    SCIP* getModel() const;
+
     void setDt(double dt);
     void setNSteps(const size_t nSteps);
     void setXvartype(const state_var_t &xvartype);
